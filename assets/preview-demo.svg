@@ -1,0 +1,70 @@
+<svg width="800" height="400" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .card {
+      animation: moveCard 6s infinite;
+    }
+    @keyframes moveCard {
+      0% { transform: translate(35px, 200px); opacity: 0; }
+      10% { transform: translate(35px, 200px); opacity: 1; } /* Appear in Todo */
+      30% { transform: translate(35px, 200px); } /* Stay */
+      45% { transform: translate(225px, 130px); } /* Move to Progress */
+      65% { transform: translate(225px, 130px); } /* Stay */
+      80% { transform: translate(605px, 200px); } /* Move to Done */
+      95% { transform: translate(605px, 200px); opacity: 1; }
+      100% { transform: translate(605px, 200px); opacity: 0; } /* Fade out */
+    }
+    .cursor {
+      animation: moveCursor 6s infinite;
+    }
+    @keyframes moveCursor {
+      0% { transform: translate(100px, 250px); opacity: 0; }
+      10% { transform: translate(100px, 250px); opacity: 1; }
+      30% { transform: translate(100px, 230px); } /* Grab */
+      45% { transform: translate(290px, 160px); } /* Drop in Progress */
+      65% { transform: translate(290px, 160px); } /* Grab */
+      80% { transform: translate(670px, 230px); } /* Drop in Done */
+      95% { transform: translate(670px, 230px); opacity: 1; }
+      100% { transform: translate(670px, 230px); opacity: 0; }
+    }
+  </style>
+
+  <!-- Background -->
+  <rect width="800" height="400" fill="#1e1e1e" />
+  
+  <!-- Header -->
+  <rect width="800" height="60" fill="#252525" />
+  <circle cx="30" cy="30" r="10" fill="#ff5f56" />
+  <circle cx="60" cy="30" r="10" fill="#ffbd2e" />
+  <circle cx="90" cy="30" r="10" fill="#27c93f" />
+  <text x="120" y="38" font-family="Arial" font-size="20" fill="#ffffff" font-weight="bold">ProKanban Demo</text>
+
+  <!-- Columns -->
+  <!-- Todo -->
+  <rect x="20" y="80" width="180" height="300" rx="10" fill="#2c2c2c" />
+  <text x="40" y="110" font-family="Arial" font-size="16" fill="#e0e0e0">Todo</text>
+  <rect x="35" y="130" width="150" height="60" rx="5" fill="#3a3a3a" />
+
+  <!-- Progress -->
+  <rect x="210" y="80" width="180" height="300" rx="10" fill="#2c2c2c" />
+  <text x="230" y="110" font-family="Arial" font-size="16" fill="#e0e0e0">In Progress</text>
+
+  <!-- On Hold -->
+  <rect x="400" y="80" width="180" height="300" rx="10" fill="#2c2c2c" />
+  <text x="420" y="110" font-family="Arial" font-size="16" fill="#e0e0e0">On Hold</text>
+  <rect x="415" y="130" width="150" height="60" rx="5" fill="#3a3a3a" />
+
+  <!-- Done -->
+  <rect x="590" y="80" width="180" height="300" rx="10" fill="#2c2c2c" />
+  <text x="610" y="110" font-family="Arial" font-size="16" fill="#e0e0e0">Done</text>
+  <rect x="605" y="130" width="150" height="60" rx="5" fill="#3a3a3a" />
+
+  <!-- Animated Card -->
+  <g class="card">
+    <rect width="150" height="60" rx="5" fill="#646cff" />
+    <text x="15" y="35" font-family="Arial" font-size="14" fill="#ffffff">New Feature Task</text>
+  </g>
+
+  <!-- Animated Cursor -->
+  <polygon class="cursor" points="0,0 0,20 5,15 12,22 14,18 7,11 12,11" fill="white" stroke="black" />
+
+</svg>
