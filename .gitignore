@@ -16,3 +16,16 @@ build/
 # Environment Variables
 .env
 .env.local
+
+# Editor Directories
+.vscode/
+.idea/
+*.suo
+*.ntvs
+*.njsproj
+*.sln
+*.sw?
+
+# Self-ignore
+.gitignore
+
