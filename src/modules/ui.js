@@ -15,7 +15,8 @@ const elements = {
   // New Fields
   taskPriorityInput: document.getElementById('task-priority'),
   taskDueDateInput: document.getElementById('task-due-date'),
-  taskTagsInput: document.getElementById('task-tags'),
+  taskTagsContainer: document.getElementById('task-tags'),
+  taskTagsInput: document.getElementById('task-tags-input'),
   
   historyModal: document.getElementById('history-modal'),
   historyList: document.getElementById('history-list'),
@@ -169,6 +170,9 @@ export function setupEventListeners() {
     document.getElementById('add-task-btn').addEventListener('click', () => openModal());
     document.getElementById('cancel-modal').addEventListener('click', closeModal);
     elements.taskForm.addEventListener('submit', handleTaskSubmit);
+    
+    // Tag Chip Input
+    setupTagsInput();
 
     // History Modal
     document.getElementById('history-btn').addEventListener('click', openHistoryModal);
@@ -257,6 +261,9 @@ function handleGlobalClick(e) {
 
 function openModal(task = null) {
   elements.modal.classList.add('active');
+  // Clear existing tag chips
+  clearTagChips();
+  
   if (task) {
     elements.modalTitle.innerText = 'Edit Task';
     elements.taskIdInput.value = task.id;
@@ -264,14 +271,16 @@ function openModal(task = null) {
     // New fields
     if(elements.taskPriorityInput) elements.taskPriorityInput.value = task.priority || 'medium';
     if(elements.taskDueDateInput && task.dueDate) elements.taskDueDateInput.value = task.dueDate.slice(0, 10); // YYYY-MM-DD
-    if(elements.taskTagsInput) elements.taskTagsInput.value = (task.tags || []).join(', ');
+    // Populate tag chips
+    if(task.tags && task.tags.length > 0) {
+      task.tags.forEach(tag => addTagChip(tag));
+    }
   } else {
     elements.modalTitle.innerText = 'Add New Task';
     elements.taskIdInput.value = '';
     elements.taskDescInput.value = '';
     if(elements.taskPriorityInput) elements.taskPriorityInput.value = 'medium';
     if(elements.taskDueDateInput) elements.taskDueDateInput.value = '';
-    if(elements.taskTagsInput) elements.taskTagsInput.value = '';
   }
   elements.taskDescInput.focus();
 }
@@ -286,8 +295,7 @@ function handleTaskSubmit(e) {
   const content = elements.taskDescInput.value.trim();
   const priority = elements.taskPriorityInput ? elements.taskPriorityInput.value : 'medium';
   const dueDate = elements.taskDueDateInput ? elements.taskDueDateInput.value : null;
-  const tagsStr = elements.taskTagsInput ? elements.taskTagsInput.value : '';
-  const tags = tagsStr.split(',').map(t => t.trim()).filter(Boolean);
+  const tags = getTagsFromChips();
 
   if (!content) return;
 
@@ -478,4 +486,96 @@ function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+// -- Tag Chip Functions --
+
+function setupTagsInput() {
+  if (!elements.taskTagsInput || !elements.taskTagsContainer) return;
+  
+  // Click on container focuses input
+  elements.taskTagsContainer.addEventListener('click', () => {
+    elements.taskTagsInput.focus();
+  });
+  
+  // Handle keydown for comma, Enter, Backspace
+  elements.taskTagsInput.addEventListener('keydown', (e) => {
+    const value = elements.taskTagsInput.value.trim();
+    
+    // Comma or Enter adds a chip
+    if (e.key === ',' || e.key === 'Enter') {
+      e.preventDefault();
+      if (value) {
+        addTagChip(value);
+        elements.taskTagsInput.value = '';
+      }
+    }
+    
+    // Backspace on empty input removes last chip
+    if (e.key === 'Backspace' && !elements.taskTagsInput.value) {
+      const chips = elements.taskTagsContainer.querySelectorAll('.tag-chip');
+      if (chips.length > 0) {
+        chips[chips.length - 1].remove();
+      }
+    }
+  });
+  
+  // Also handle input for pasted commas
+  elements.taskTagsInput.addEventListener('input', (e) => {
+    const value = elements.taskTagsInput.value;
+    if (value.includes(',')) {
+      const parts = value.split(',');
+      parts.forEach((part, index) => {
+        const trimmed = part.trim();
+        if (trimmed && index < parts.length - 1) {
+          addTagChip(trimmed);
+        }
+      });
+      // Keep only the last part (after the last comma) in the input
+      elements.taskTagsInput.value = parts[parts.length - 1].trim();
+    }
+  });
+}
+
+function addTagChip(tag) {
+  const normalizedTag = tag.trim().toLowerCase();
+  if (!normalizedTag) return;
+  
+  // Check for duplicates
+  const existingTags = getTagsFromChips();
+  if (existingTags.includes(normalizedTag)) return;
+  
+  const chip = document.createElement('span');
+  chip.className = 'tag-chip';
+  chip.dataset.tag = normalizedTag;
+  chip.innerHTML = `
+    ${escapeHtml(normalizedTag)}
+    <button type="button" class="tag-chip-remove" aria-label="Remove tag">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor">
+        <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
+      </svg>
+    </button>
+  `;
+  
+  // Remove button handler
+  chip.querySelector('.tag-chip-remove').addEventListener('click', (e) => {
+    e.stopPropagation();
+    chip.remove();
+  });
+  
+  // Insert chip before the input
+  elements.taskTagsContainer.insertBefore(chip, elements.taskTagsInput);
+}
+
+function clearTagChips() {
+  if (!elements.taskTagsContainer) return;
+  const chips = elements.taskTagsContainer.querySelectorAll('.tag-chip');
+  chips.forEach(chip => chip.remove());
+  if (elements.taskTagsInput) elements.taskTagsInput.value = '';
+}
+
+function getTagsFromChips() {
+  if (!elements.taskTagsContainer) return [];
+  const chips = elements.taskTagsContainer.querySelectorAll('.tag-chip');
+  return Array.from(chips).map(chip => chip.dataset.tag);
 }
