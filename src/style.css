@@ -63,6 +63,98 @@ input:focus, select:focus, textarea:focus {
 .badge-tag { background: rgba(139, 92, 246, 0.2); color: #a78bfa; text-transform: lowercase; }
 .task-metadata-bar { margin-bottom: 0.5rem; }
 
+/* Tags Chip Input */
+.tags-input-container {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  min-height: 48px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  cursor: text;
+  transition: all 0.2s;
+}
+
+.tags-input-container:focus-within {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.2);
+}
+
+.tags-input-container input {
+  flex: 1;
+  min-width: 120px;
+  border: none !important;
+  background: transparent !important;
+  color: var(--text-color);
+  font-size: 0.95rem;
+  padding: 4px 0;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.tags-input-container input:focus {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.tags-input-container input::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.6;
+}
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px 4px 10px;
+  background: rgba(139, 92, 246, 0.2);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 16px;
+  font-size: 0.85rem;
+  color: #a78bfa;
+  animation: chip-pop-in 0.15s ease-out;
+}
+
+@keyframes chip-pop-in {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.tag-chip-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.15s;
+}
+
+.tag-chip-remove:hover {
+  background: rgba(239, 68, 68, 0.3);
+  color: #f87171;
+}
+
+.tag-chip-remove svg {
+  width: 10px;
+  height: 10px;
+}
+
 /* Header */
 header {
   padding: 1.5rem 3rem;
