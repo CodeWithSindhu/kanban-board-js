@@ -170,6 +170,40 @@ header {
   background: rgba(13, 17, 23, 0.7);
 }
 
+.toolbar {
+  display: grid;
+  grid-template-columns: minmax(200px, 2fr) repeat(4, minmax(160px, 1fr));
+  gap: 1rem;
+  padding: 1.25rem 3rem 0.5rem;
+  background: rgba(13, 17, 23, 0.6);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.toolbar-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.toolbar-field label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+}
+
+.toolbar-search input {
+  border-color: rgba(88, 166, 255, 0.3);
+}
+
+.toolbar input.filter-active,
+.toolbar select.filter-active {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.2);
+  background: rgba(13, 17, 23, 0.8);
+}
+
 h1 {
   font-weight: 800;
   font-size: 1.5rem;
@@ -284,9 +318,9 @@ button {
 
 /* Board Layout */
 main {
-  padding: 2rem 3rem;
+  padding: 1.5rem 3rem 2rem;
   overflow-x: auto;
-  height: calc(100vh - 80px);
+  height: calc(100vh - 154px);
 }
 
 .kanban-board {
@@ -954,6 +988,11 @@ main {
     padding: 6px;
   }
 
+  .toolbar {
+    grid-template-columns: 1fr;
+    padding: 1rem 1.25rem 0.5rem;
+  }
+
   main {
     padding: 1rem;
     height: auto;
@@ -986,6 +1025,10 @@ main {
     width: 100%;
     padding: 4px;
     gap: 0.25rem;
+  }
+
+  .toolbar {
+    padding: 0.75rem;
   }
 
   .header-actions button {
