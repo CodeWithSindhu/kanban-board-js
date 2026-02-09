@@ -42,11 +42,23 @@ function handleDrop(e, column) {
   
   const id = draggable.dataset.id;
   const task = state.tasks.find(t => t.id === id);
+  const limit = state.wipLimits?.[status];
+  const hasLimit = Number.isFinite(limit);
+  const columnLabel = column.querySelector('.column-header span')?.textContent?.trim() || status;
 
   if (task && status === 'todo' && task.status !== 'todo') {
     alert("Tasks cannot be moved back to Todo once started!");
     if (renderCallback) renderCallback();
     return;
+  }
+
+  if (task && task.status !== status && hasLimit) {
+    const statusCount = getStatusCount(status);
+    if (statusCount >= limit) {
+      alert(`WIP limit reached for ${columnLabel} (${limit}). Move a task out before adding another.`);
+      if (renderCallback) renderCallback();
+      return;
+    }
   }
 
   if (task && task.status !== status) {
@@ -74,6 +86,12 @@ function handleDrop(e, column) {
   
   saveData();
   if (renderCallback) renderCallback();
+}
+
+function getStatusCount(status) {
+  return state.tasks.reduce((count, task) => (
+    task.status === status ? count + 1 : count
+  ), 0);
 }
 
 function updateTaskOrder() {
