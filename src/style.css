@@ -46,7 +46,7 @@ body {
 .form-row { display: flex; gap: 1rem; }
 .form-row .form-group { flex: 1; }
 
-input[type="text"], input[type="date"], select, textarea {
+input[type="text"], input[type="date"], input[type="url"], select, textarea {
   width: 100%; padding: 0.8rem; border-radius: 8px; border: 1px solid var(--glass-border);
   background: rgba(0, 0, 0, 0.2); color: var(--text-color); font-family: inherit; font-size: 0.95rem;
 }
@@ -382,6 +382,29 @@ main {
   color: var(--text-color);
   font-weight: 400;
   word-wrap: break-word;
+}
+
+.task-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--primary-color);
+  text-decoration: none;
+  word-break: break-all;
+  padding: 0.35rem 0.6rem;
+  border-radius: 8px;
+  background: rgba(88, 166, 255, 0.08);
+  border: 1px solid rgba(88, 166, 255, 0.2);
+}
+
+.task-link::before {
+  content: '🔗';
+}
+
+.task-link:hover {
+  background: rgba(88, 166, 255, 0.16);
+  border-color: rgba(88, 166, 255, 0.35);
 }
 
 /* unique Timer Design */

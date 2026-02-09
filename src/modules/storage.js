@@ -19,7 +19,8 @@ export function loadData() {
       // New Metadata Fields (Defaults)
       priority: task.priority || 'medium',
       dueDate: task.dueDate || null,
-      tags: task.tags || []
+      tags: task.tags || [],
+      url: task.url || ''
     }));
 
   } catch (e) {
