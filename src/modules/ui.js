@@ -24,6 +24,11 @@ const elements = {
   timeLogsModal: document.getElementById('time-logs-modal'),
   timeLogsList: document.getElementById('time-logs-list'),
   totalDurationContainer: document.getElementById('total-duration-container'),
+  filterSearch: document.getElementById('task-search'),
+  filterPriority: document.getElementById('filter-priority'),
+  filterTags: document.getElementById('filter-tags'),
+  filterStatus: document.getElementById('filter-status'),
+  filterDueDate: document.getElementById('filter-due-date'),
   
   columns: {
     todo: document.getElementById('todo-container'),
@@ -42,6 +47,11 @@ const elements = {
 // -- Render Functions --
 
 export function renderTasks() {
+  updateTagFilterOptions(state.tasks);
+  updateFilterIndicators();
+
+  const filteredTasks = applyFilters(state.tasks);
+
   // Clear containers
   Object.values(elements.columns).forEach(el => el.innerHTML = '');
   
@@ -50,7 +60,7 @@ export function renderTasks() {
 
   const taskCounts = { todo: 0, progress: 0, 'on-hold': 0, done: 0 };
 
-  state.tasks.forEach(task => {
+  filteredTasks.forEach(task => {
     // Safety check
     if (!elements.columns[task.status]) {
         task.status = 'todo';
@@ -170,6 +180,138 @@ function createEmptyState() {
 
 // -- Modal & Event Handlers --
 
+function setupFilterListeners() {
+  if (!elements.filterSearch) return;
+
+  elements.filterSearch.addEventListener('input', () => {
+    state.filters.search = elements.filterSearch.value;
+    renderTasks();
+  });
+
+  elements.filterPriority?.addEventListener('change', () => {
+    state.filters.priority = elements.filterPriority.value;
+    renderTasks();
+  });
+
+  elements.filterTags?.addEventListener('change', () => {
+    state.filters.tag = elements.filterTags.value;
+    renderTasks();
+  });
+
+  elements.filterStatus?.addEventListener('change', () => {
+    state.filters.status = elements.filterStatus.value;
+    renderTasks();
+  });
+
+  elements.filterDueDate?.addEventListener('change', () => {
+    state.filters.dueDate = elements.filterDueDate.value;
+    renderTasks();
+  });
+}
+
+function applyFilters(tasks) {
+  const searchValue = state.filters.search.trim().toLowerCase();
+  const priorityValue = state.filters.priority;
+  const tagValue = state.filters.tag;
+  const statusValue = state.filters.status;
+  const dueDateValue = state.filters.dueDate;
+
+  return tasks.filter(task => {
+    const taskPriority = task.priority || 'medium';
+    if (priorityValue !== 'all' && taskPriority !== priorityValue) return false;
+    if (statusValue !== 'all' && task.status !== statusValue) return false;
+
+    if (tagValue !== 'all') {
+      const tagList = (task.tags || []).map(tag => tag.toLowerCase());
+      if (!tagList.includes(tagValue)) return false;
+    }
+
+    if (searchValue) {
+      const contentMatch = task.content?.toLowerCase().includes(searchValue);
+      const tagMatch = (task.tags || []).some(tag => tag.toLowerCase().includes(searchValue));
+      if (!contentMatch && !tagMatch) return false;
+    }
+
+    if (!matchesDueDateFilter(task, dueDateValue)) return false;
+
+    return true;
+  });
+}
+
+function matchesDueDateFilter(task, filterValue) {
+  if (filterValue === 'all') return true;
+  const dueDate = task.dueDate ? new Date(task.dueDate) : null;
+
+  if (filterValue === 'no-date') return !dueDate;
+  if (!dueDate) return false;
+
+  const todayStart = startOfDay(new Date());
+  const dueStart = startOfDay(dueDate);
+
+  switch (filterValue) {
+    case 'overdue':
+      return dueStart < todayStart;
+    case 'today':
+      return dueStart.getTime() === todayStart.getTime();
+    case 'next-7': {
+      const rangeEnd = new Date(todayStart);
+      rangeEnd.setDate(rangeEnd.getDate() + 7);
+      return dueStart >= todayStart && dueStart <= rangeEnd;
+    }
+    default:
+      return true;
+  }
+}
+
+function startOfDay(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function updateTagFilterOptions(tasks) {
+  if (!elements.filterTags) return;
+  const currentSelection = elements.filterTags.value || state.filters.tag;
+  const tagSet = new Set();
+
+  tasks.forEach(task => {
+    (task.tags || []).forEach(tag => {
+      if (tag) tagSet.add(tag.toLowerCase());
+    });
+  });
+
+  const sortedTags = Array.from(tagSet).sort((a, b) => a.localeCompare(b));
+  elements.filterTags.innerHTML = '<option value="all">All tags</option>';
+  sortedTags.forEach(tag => {
+    const option = document.createElement('option');
+    option.value = tag;
+    option.textContent = `#${tag}`;
+    elements.filterTags.appendChild(option);
+  });
+
+  if (sortedTags.includes(currentSelection)) {
+    elements.filterTags.value = currentSelection;
+    state.filters.tag = currentSelection;
+  } else {
+    elements.filterTags.value = 'all';
+    state.filters.tag = 'all';
+  }
+}
+
+function updateFilterIndicators() {
+  if (!elements.filterSearch) return;
+  const filterMap = new Map([
+    [elements.filterSearch, state.filters.search.trim() !== ''],
+    [elements.filterPriority, state.filters.priority !== 'all'],
+    [elements.filterTags, state.filters.tag !== 'all'],
+    [elements.filterStatus, state.filters.status !== 'all'],
+    [elements.filterDueDate, state.filters.dueDate !== 'all']
+  ]);
+
+  filterMap.forEach((isActive, element) => {
+    if (!element) return;
+    element.classList.toggle('filter-active', isActive);
+  });
+}
+
 export function setupEventListeners() {
     // Add/Edit Task Modal
     document.getElementById('add-task-btn').addEventListener('click', () => openModal());
@@ -218,6 +360,8 @@ export function setupEventListeners() {
     // Global Delegation for dynamically created cards
     document.getElementById('close-logs-btn').addEventListener('click', closeTimeLogsModal);
     window.addEventListener('click', handleGlobalClick);
+
+    setupFilterListeners();
 }
 
 function handleGlobalClick(e) {
