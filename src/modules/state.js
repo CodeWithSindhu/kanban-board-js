@@ -5,6 +5,12 @@ export const state = {
   history: [],
   viewedTaskId: null, // For UI tracking
   draggedTask: null,  // For Drag & Drop
+  wipLimits: {
+    todo: 5,
+    progress: 3,
+    'on-hold': 3,
+    done: 10
+  },
   filters: {
     search: '',
     priority: 'all',

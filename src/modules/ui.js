@@ -36,6 +36,12 @@ const elements = {
     'on-hold': document.getElementById('on-hold-container'),
     done: document.getElementById('done-container'),
   },
+  columnWrappers: {
+    todo: document.getElementById('todo-col'),
+    progress: document.getElementById('progress-col'),
+    'on-hold': document.getElementById('on-hold-col'),
+    done: document.getElementById('done-col'),
+  },
   counts: {
     todo: document.querySelector('#todo-col .count'),
     progress: document.querySelector('#progress-col .count'),
@@ -59,6 +65,13 @@ export function renderTasks() {
   Object.keys(elements.counts).forEach(k => elements.counts[k].innerText = '0');
 
   const taskCounts = { todo: 0, progress: 0, 'on-hold': 0, done: 0 };
+  const totalCounts = { todo: 0, progress: 0, 'on-hold': 0, done: 0 };
+
+  state.tasks.forEach(task => {
+    if (totalCounts[task.status] !== undefined) {
+      totalCounts[task.status]++;
+    }
+  });
 
   filteredTasks.forEach(task => {
     // Safety check
@@ -81,8 +94,14 @@ export function renderTasks() {
   });
 
   // Update counts
-  Object.keys(taskCounts).forEach(k => {
-    if (elements.counts[k]) elements.counts[k].innerText = taskCounts[k];
+  Object.keys(totalCounts).forEach(k => {
+    const limit = state.wipLimits?.[k];
+    const hasLimit = Number.isFinite(limit);
+    const countLabel = hasLimit ? `${totalCounts[k]} / ${limit}` : `${totalCounts[k]}`;
+    if (elements.counts[k]) elements.counts[k].innerText = countLabel;
+    if (elements.columnWrappers[k]) {
+      elements.columnWrappers[k].classList.toggle('over-limit', hasLimit && totalCounts[k] > limit);
+    }
   });
 }
 
