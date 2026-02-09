@@ -59,6 +59,13 @@ export function renderTasks() {
   Object.keys(elements.counts).forEach(k => elements.counts[k].innerText = '0');
 
   const taskCounts = { todo: 0, progress: 0, 'on-hold': 0, done: 0 };
+  const totalCounts = { todo: 0, progress: 0, 'on-hold': 0, done: 0 };
+
+  state.tasks.forEach(task => {
+    if (totalCounts[task.status] !== undefined) {
+      totalCounts[task.status]++;
+    }
+  });
 
   filteredTasks.forEach(task => {
     // Safety check
@@ -82,7 +89,10 @@ export function renderTasks() {
 
   // Update counts
   Object.keys(taskCounts).forEach(k => {
-    if (elements.counts[k]) elements.counts[k].innerText = taskCounts[k];
+    if (elements.counts[k]) {
+      elements.counts[k].innerText = taskCounts[k];
+      elements.counts[k].title = `Total tasks: ${totalCounts[k]}`;
+    }
   });
 }
 
