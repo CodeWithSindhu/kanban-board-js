@@ -4,7 +4,14 @@ export const state = {
   tasks: [],
   history: [],
   viewedTaskId: null, // For UI tracking
-  draggedTask: null   // For Drag & Drop
+  draggedTask: null,  // For Drag & Drop
+  filters: {
+    search: '',
+    priority: 'all',
+    tag: 'all',
+    status: 'all',
+    dueDate: 'all'
+  }
 };
 
 // Simple ID generator

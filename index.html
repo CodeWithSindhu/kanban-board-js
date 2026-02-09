@@ -46,6 +46,48 @@
       </div>
     </header>
 
+    <section class="toolbar" aria-label="Task filters">
+      <div class="toolbar-field toolbar-search">
+        <label for="task-search">Search</label>
+        <input type="text" id="task-search" placeholder="Search tasks or tags..." />
+      </div>
+      <div class="toolbar-field">
+        <label for="filter-priority">Priority</label>
+        <select id="filter-priority">
+          <option value="all">All priorities</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+      </div>
+      <div class="toolbar-field">
+        <label for="filter-tags">Tags</label>
+        <select id="filter-tags">
+          <option value="all">All tags</option>
+        </select>
+      </div>
+      <div class="toolbar-field">
+        <label for="filter-status">Status</label>
+        <select id="filter-status">
+          <option value="all">All statuses</option>
+          <option value="todo">To Do</option>
+          <option value="progress">In Progress</option>
+          <option value="on-hold">On Hold</option>
+          <option value="done">Done</option>
+        </select>
+      </div>
+      <div class="toolbar-field">
+        <label for="filter-due-date">Due date</label>
+        <select id="filter-due-date">
+          <option value="all">All due dates</option>
+          <option value="overdue">Overdue</option>
+          <option value="today">Due today</option>
+          <option value="next-7">Next 7 days</option>
+          <option value="no-date">No due date</option>
+        </select>
+      </div>
+    </section>
+
     <main>
       <div class="kanban-board">
         <!-- Todo Column -->
