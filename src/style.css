@@ -351,6 +351,11 @@ main {
   max-height: 100%;
 }
 
+.column.over-limit {
+  border-color: rgba(218, 54, 51, 0.6);
+  box-shadow: 0 0 0 1px rgba(218, 54, 51, 0.3);
+}
+
 .column-header {
   padding: 1.2rem;
   border-bottom: 1px solid var(--glass-border);

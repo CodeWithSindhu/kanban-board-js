@@ -36,6 +36,12 @@ const elements = {
     'on-hold': document.getElementById('on-hold-container'),
     done: document.getElementById('done-container'),
   },
+  columnWrappers: {
+    todo: document.getElementById('todo-col'),
+    progress: document.getElementById('progress-col'),
+    'on-hold': document.getElementById('on-hold-col'),
+    done: document.getElementById('done-col'),
+  },
   counts: {
     todo: document.querySelector('#todo-col .count'),
     progress: document.querySelector('#progress-col .count'),
@@ -90,8 +96,14 @@ export function renderTasks() {
   // Update counts
   Object.keys(taskCounts).forEach(k => {
     if (elements.counts[k]) {
-      elements.counts[k].innerText = taskCounts[k];
-      elements.counts[k].title = `Total tasks: ${totalCounts[k]}`;
+      const limit = state.wipLimits?.[k];
+      const hasLimit = Number.isFinite(limit);
+      const countLabel = hasLimit ? `${taskCounts[k]} / ${limit}` : `${taskCounts[k]}`;
+      elements.counts[k].innerText = countLabel;
+      elements.counts[k].title = `Showing ${taskCounts[k]} of ${totalCounts[k]} tasks`;
+      if (elements.columnWrappers?.[k]) {
+        elements.columnWrappers[k].classList.toggle('over-limit', hasLimit && totalCounts[k] > limit);
+      }
     }
   });
 }
