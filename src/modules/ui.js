@@ -12,6 +12,7 @@ const elements = {
   taskForm: document.getElementById('task-form'),
   taskDescInput: document.getElementById('task-desc'),
   taskIdInput: document.getElementById('task-id'),
+  taskUrlInput: document.getElementById('task-url'),
   // New Fields
   taskPriorityInput: document.getElementById('task-priority'),
   taskDueDateInput: document.getElementById('task-due-date'),
@@ -91,6 +92,9 @@ function createTaskCard(task) {
   const tagsHtml = (task.tags || []).map(tag => `<span class="badge badge-tag">#${tag}</span>`).join('');
   
   const metadataBar = `<div class="task-metadata-bar">${priorityHtml} ${dateHtml} ${tagsHtml}</div>`;
+  const urlHtml = task.url
+    ? `<a class="task-link" href="${escapeHtml(normalizeUrl(task.url))}" target="_blank" rel="noopener noreferrer">${escapeHtml(formatUrlLabel(task.url))}</a>`
+    : '';
 
   // 2. Timer HTML
   let timerHtml = '';
@@ -132,6 +136,7 @@ function createTaskCard(task) {
        ${metadataBar}
     </div>
     <div class="task-content">${escapeHtml(task.content)}</div>
+    ${urlHtml}
     ${timerHtml}
     <div class="task-meta">
       <span>${new Date(task.createdAt).toLocaleDateString()}</span>
@@ -268,6 +273,7 @@ function openModal(task = null) {
     elements.modalTitle.innerText = 'Edit Task';
     elements.taskIdInput.value = task.id;
     elements.taskDescInput.value = task.content;
+    if (elements.taskUrlInput) elements.taskUrlInput.value = task.url || '';
     // New fields
     if(elements.taskPriorityInput) elements.taskPriorityInput.value = task.priority || 'medium';
     if(elements.taskDueDateInput && task.dueDate) elements.taskDueDateInput.value = task.dueDate.slice(0, 10); // YYYY-MM-DD
@@ -279,6 +285,7 @@ function openModal(task = null) {
     elements.modalTitle.innerText = 'Add New Task';
     elements.taskIdInput.value = '';
     elements.taskDescInput.value = '';
+    if (elements.taskUrlInput) elements.taskUrlInput.value = '';
     if(elements.taskPriorityInput) elements.taskPriorityInput.value = 'medium';
     if(elements.taskDueDateInput) elements.taskDueDateInput.value = '';
   }
@@ -293,6 +300,7 @@ function handleTaskSubmit(e) {
   e.preventDefault();
   const id = elements.taskIdInput.value;
   const content = elements.taskDescInput.value.trim();
+  const url = elements.taskUrlInput ? elements.taskUrlInput.value.trim() : '';
   const priority = elements.taskPriorityInput ? elements.taskPriorityInput.value : 'medium';
   const dueDate = elements.taskDueDateInput ? elements.taskDueDateInput.value : null;
   const tags = getTagsFromChips();
@@ -303,6 +311,7 @@ function handleTaskSubmit(e) {
     const task = state.tasks.find(t => t.id === id);
     if (task) {
         task.content = content;
+        task.url = url;
         task.priority = priority;
         task.dueDate = dueDate;
         task.tags = tags;
@@ -314,6 +323,7 @@ function handleTaskSubmit(e) {
     state.tasks.push({
       id: newId,
       content,
+      url,
       status: 'todo',
       createdAt: new Date().toISOString(),
       priority,
@@ -486,6 +496,17 @@ function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+function normalizeUrl(url) {
+  if (!url) return '';
+  if (/^https?:\/\//i.test(url)) return url;
+  return `https://${url}`;
+}
+
+function formatUrlLabel(url) {
+  const trimmed = url.trim();
+  return trimmed.length > 48 ? `${trimmed.slice(0, 45)}...` : trimmed;
 }
 
 // -- Tag Chip Functions --
