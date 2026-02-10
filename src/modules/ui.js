@@ -57,6 +57,13 @@ export function renderTasks() {
   updateFilterIndicators();
 
   const filteredTasks = applyFilters(state.tasks);
+  const hasActiveFilters = Boolean(
+    state.filters.search.trim() ||
+    state.filters.priority !== 'all' ||
+    state.filters.tag !== 'all' ||
+    state.filters.status !== 'all' ||
+    state.filters.dueDate !== 'all'
+  );
 
   // Clear containers
   Object.values(elements.columns).forEach(el => el.innerHTML = '');
@@ -97,10 +104,17 @@ export function renderTasks() {
   Object.keys(totalCounts).forEach(k => {
     const limit = state.wipLimits?.[k];
     const hasLimit = Number.isFinite(limit);
-    const countLabel = hasLimit ? `${totalCounts[k]} / ${limit}` : `${totalCounts[k]}`;
+    const filteredCount = taskCounts[k];
+    const totalCount = totalCounts[k];
+    const countLabel = hasActiveFilters
+      ? `${filteredCount}/${totalCount}${hasLimit ? `/${limit}` : ''}`
+      : hasLimit
+        ? `${totalCount} / ${limit}`
+        : `${totalCount}`;
+
     if (elements.counts[k]) elements.counts[k].innerText = countLabel;
     if (elements.columnWrappers[k]) {
-      elements.columnWrappers[k].classList.toggle('over-limit', hasLimit && totalCounts[k] > limit);
+      elements.columnWrappers[k].classList.toggle('over-limit', hasLimit && totalCount > limit);
     }
   });
 }
