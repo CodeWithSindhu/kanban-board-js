@@ -437,6 +437,12 @@ main {
   align-items: center;
 }
 
+.task-timer-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .task-details {
   display: grid;
   gap: var(--space-2);
@@ -1348,6 +1354,54 @@ main {
   outline: none;
   border-color: var(--primary-color);
   box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.15);
+}
+
+.session-state-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.16rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(110, 118, 129, 0.2);
+  color: #f0f6fc;
+  font-size: 0.68rem;
+  letter-spacing: 0.2px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.session-state-chip--recording {
+  border-color: rgba(247, 129, 102, 0.6);
+  background: rgba(247, 129, 102, 0.2);
+  color: #ffd8d1;
+}
+
+.session-state-chip--paused {
+  border-color: rgba(210, 153, 34, 0.5);
+  background: rgba(210, 153, 34, 0.18);
+  color: #ffe6a7;
+}
+
+.session-state-chip--awaiting {
+  border-color: rgba(88, 166, 255, 0.55);
+  background: rgba(88, 166, 255, 0.2);
+  color: #d8ebff;
+}
+
+.memo-save-status {
+  min-height: 1rem;
+  margin: 0;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #7ee787;
+}
+
+.memo-guidance-text {
+  margin: 0;
+  color: #c9d1d9;
+  font-size: 0.74rem;
+  line-height: 1.35;
 }
 
 .memo-history-section {
