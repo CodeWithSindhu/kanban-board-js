@@ -8,7 +8,7 @@ export function loadData() {
   try {
     const loadedTasks = localStorage.getItem(TASKS_KEY);
     state.tasks = loadedTasks ? JSON.parse(loadedTasks) : [];
-    
+
     // Migration: Ensure fields exist
     state.tasks = state.tasks.map(task => ({
       ...task,
@@ -16,6 +16,8 @@ export function loadData() {
       isTracking: task.isTracking || false,
       lastStartTime: task.lastStartTime || null,
       timeLogs: task.timeLogs || [],
+      memoSessions: task.memoSessions || [],
+      activeMemoSession: task.activeMemoSession || null,
       // New Metadata Fields (Defaults)
       priority: task.priority || 'medium',
       dueDate: task.dueDate || null,
@@ -23,8 +25,10 @@ export function loadData() {
       url: task.url || ''
     }));
 
+    const activeMemoTask = state.tasks.find(task => task.isTracking && task.activeMemoSession);
+    state.activeMemoDraftTaskId = activeMemoTask ? activeMemoTask.id : null;
   } catch (e) {
-    console.error("Failed to load tasks:", e);
+    console.error('Failed to load tasks:', e);
     state.tasks = [];
   }
 
@@ -32,7 +36,7 @@ export function loadData() {
     const loadedHistory = localStorage.getItem(HISTORY_KEY);
     state.history = loadedHistory ? JSON.parse(loadedHistory) : [];
   } catch (e) {
-    console.error("Failed to load history:", e);
+    console.error('Failed to load history:', e);
     state.history = [];
   }
 }
@@ -52,10 +56,10 @@ export function exportBoardData() {
     exportDate: new Date().toISOString(),
     version: '1.0'
   };
-  
+
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
-  
+
   const a = document.createElement('a');
   a.href = url;
   a.download = `kanban-backup-${new Date().toISOString().slice(0, 10)}.json`;
@@ -69,7 +73,11 @@ export function importBoardData(jsonString) {
   try {
     const data = JSON.parse(jsonString);
     if (data.tasks && Array.isArray(data.tasks)) {
-      state.tasks = data.tasks;
+      state.tasks = data.tasks.map(task => ({
+        ...task,
+        memoSessions: task.memoSessions || [],
+        activeMemoSession: task.activeMemoSession || null
+      }));
       saveData();
     }
     if (data.history && Array.isArray(data.history)) {
@@ -78,7 +86,7 @@ export function importBoardData(jsonString) {
     }
     return true;
   } catch (e) {
-    console.error("Import failed:", e);
+    console.error('Import failed:', e);
     return false;
   }
 }
