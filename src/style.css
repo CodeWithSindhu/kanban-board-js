@@ -13,6 +13,10 @@
   --shadow-md: 0 8px 24px rgba(0,0,0,0.2);
   --shadow-lg: 0 12px 48px rgba(0,0,0,0.4);
   --radius: 12px;
+  --space-1: 0.35rem;
+  --space-2: 0.65rem;
+  --space-3: 0.9rem;
+  --space-4: 1.2rem;
 }
 
 * {
@@ -55,13 +59,13 @@ input:focus, select:focus, textarea:focus {
 }
 
 /* Badges */
-.badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; margin-right: 4px; }
-.badge-low { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
-.badge-medium { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
-.badge-high { background: rgba(239, 68, 68, 0.2); color: #f87171; }
-.badge-date { background: rgba(107, 114, 128, 0.2); color: #d1d5db; text-transform: none; }
-.badge-tag { background: rgba(139, 92, 246, 0.2); color: #a78bfa; text-transform: lowercase; }
-.task-metadata-bar { margin-bottom: 0.5rem; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; margin-right: 4px; border: 1px solid rgba(255,255,255,0.1); }
+.badge-low { background: rgba(59, 130, 246, 0.12); color: #8ab8f5; }
+.badge-medium { background: rgba(245, 158, 11, 0.12); color: #e7c987; }
+.badge-high { background: rgba(239, 68, 68, 0.12); color: #e6a2a2; }
+.badge-date { background: rgba(107, 114, 128, 0.12); color: #b7bec7; text-transform: none; }
+.badge-tag { background: rgba(139, 92, 246, 0.12); color: #b8a8df; text-transform: lowercase; }
+.task-metadata-bar { display: flex; flex-wrap: wrap; gap: var(--space-1); }
 
 /* Tags Chip Input */
 .tags-input-container {
@@ -399,7 +403,7 @@ main {
   background: var(--card-bg);
   border: 1px solid var(--glass-border);
   border-radius: 12px;
-  padding: 1.25rem;
+  padding: var(--space-4);
   cursor: grab;
   transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
   box-shadow: 0 2px 8px rgba(0,0,0,0.2);
@@ -407,7 +411,44 @@ main {
   border-left: 4px solid transparent;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--space-2);
+}
+
+.task-primary-row,
+.task-secondary-row,
+.task-details,
+.task-actions-row {
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(13, 17, 23, 0.35);
+  border-radius: 10px;
+  padding: var(--space-2) var(--space-3);
+}
+
+.task-primary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.task-secondary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.task-details {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.task-card:not(.is-expanded) .task-details {
+  display: none;
+}
+
+.task-muted {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
 }
 
 .task-card.is-overdue {
@@ -478,21 +519,15 @@ main {
 
 /* unique Timer Design */
 .task-timer {
-  background: #090c10;
-  padding: 0.4rem 0.6rem;
-  border-radius: 50px; /* Capsule shape */
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border: 1px solid #30363d;
-  box-shadow: inset 0 2px 4px rgba(0,0,0,0.5); /* Deep inset look */
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.35);
   position: relative;
   overflow: hidden;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .task-timer.is-running {
-  border-color: rgba(88, 166, 255, 0.5);
+  border-color: rgba(88, 166, 255, 0.45);
   box-shadow: 
     inset 0 2px 4px rgba(0,0,0,0.8),
     0 0 15px rgba(88, 166, 255, 0.15);
@@ -524,11 +559,24 @@ main {
   font-weight: 600;
   letter-spacing: 0.5px;
   z-index: 2;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding-left: 0.5rem;
   transition: color 0.3s;
+}
+
+.task-timer-state {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.task-timer-state.is-active {
+  color: var(--primary-color);
 }
 
 .task-timer.is-running .timer-display {
@@ -604,8 +652,6 @@ main {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-top: 0.75rem;
-  border-top: 1px solid rgba(255,255,255,0.05);
   font-size: 0.75rem;
   color: var(--text-secondary);
   margin-top: auto;
@@ -613,8 +659,8 @@ main {
 
 .task-actions {
   display: flex;
-  gap: 0.25rem;
-  opacity: 0.6;
+  gap: var(--space-1);
+  opacity: 0.8;
   transition: opacity 0.2s;
 }
 
@@ -635,6 +681,17 @@ main {
 .task-actions button:hover {
   background: rgba(255,255,255,0.1);
   color: var(--text-color);
+}
+
+.details-toggle {
+  font-size: 0.68rem;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.task-card.is-expanded .details-toggle {
+  color: var(--primary-color);
+  background: rgba(88, 166, 255, 0.15);
 }
 
 .delete-btn:hover {
@@ -1262,10 +1319,9 @@ main {
 }
 
 .active-memo-panel {
-  margin-top: 0.6rem;
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: var(--space-1);
 }
 
 .active-memo-panel label {

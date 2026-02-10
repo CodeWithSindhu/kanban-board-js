@@ -165,84 +165,88 @@ function createTaskCard(task) {
   }
 
   // --- Template Parts ---
-  
-  // 1. Metadata Badges (Priority, Date)
   const priorityHtml = task.priority ? `<span class="badge badge-${task.priority}">${task.priority}</span>` : '';
   const dateHtml = task.dueDate ? `<span class="badge badge-date">📅 ${new Date(task.dueDate).toLocaleDateString()}</span>` : '';
   const tagsHtml = (task.tags || []).map(tag => `<span class="badge badge-tag">#${tag}</span>`).join('');
-  
-  const metadataBar = `<div class="task-metadata-bar">${priorityHtml} ${dateHtml} ${tagsHtml}</div>`;
   const urlHtml = task.url
     ? `<a class="task-link" href="${escapeHtml(normalizeUrl(task.url))}" target="_blank" rel="noopener noreferrer">${escapeHtml(formatUrlLabel(task.url))}</a>`
     : '';
+  const metadataHtml = dateHtml || tagsHtml
+    ? `<div class="task-metadata-bar">${dateHtml} ${tagsHtml}</div>`
+    : '<div class="task-metadata-bar"><span class="task-muted">No metadata added</span></div>';
 
-  // 2. Timer HTML
-  let timerHtml = '';
-  if (task.status !== 'todo' && task.status !== 'done') {
-      const isTracking = task.isTracking;
-      const currentSession = isTracking ? Date.now() - task.lastStartTime : 0;
-      const totalDisplay = formatTime(task.totalTime + currentSession);
-      const memoDraft = task.activeMemoSession?.note || '';
+  const isTracking = Boolean(task.isTracking);
+  const currentSession = isTracking ? Date.now() - task.lastStartTime : 0;
+  const totalDisplay = formatTime((task.totalTime || 0) + currentSession);
+  const timerStateLabel = task.status === 'done'
+    ? 'Timer complete'
+    : task.status === 'todo'
+      ? 'Not started'
+      : isTracking
+        ? 'Running'
+        : 'Paused';
+  const timerStateClass = isTracking ? 'is-active' : '';
 
-      const timerControls = !isTracking
-        ? `<button class="timer-btn start-btn" title="Start Timer" data-action="start">${getIcon('play')}</button>`
-        : `<button class="timer-btn pause-btn" title="Pause Timer" data-action="pause">${getIcon('pause')}</button>`;
+  const timerControlHtml = (task.status !== 'todo' && task.status !== 'done')
+    ? !isTracking
+      ? `<button class="timer-btn start-btn" title="Start Timer" data-action="start">${getIcon('play')}</button>`
+      : `<button class="timer-btn pause-btn" title="Pause Timer" data-action="pause">${getIcon('pause')}</button>`
+    : '';
 
-      const memoPanelHtml = isTracking
-        ? `
-          <div class="active-memo-panel">
-            <label for="memo-${task.id}">Session Memo</label>
-            <textarea
-              id="memo-${task.id}"
-              class="active-memo-input"
-              data-memo-task-id="${task.id}"
-              placeholder="Add a short summary while you work..."
-            >${escapeHtml(memoDraft)}</textarea>
-          </div>
-        `
-        : '';
+  const memoDraft = task.activeMemoSession?.note || '';
+  const memoPanelHtml = isTracking
+    ? `
+      <div class="active-memo-panel">
+        <label for="memo-${task.id}">Session Memo</label>
+        <textarea
+          id="memo-${task.id}"
+          class="active-memo-input"
+          data-memo-task-id="${task.id}"
+          placeholder="Add a short summary while you work..."
+        >${escapeHtml(memoDraft)}</textarea>
+      </div>
+    `
+    : '<div class="active-memo-panel"><span class="task-muted">Start a timer session to capture notes.</span></div>';
 
-      timerHtml = `
-        <div class="task-timer ${isTracking ? 'is-running' : ''}">
-           <div class="timer-display" id="timer-${task.id}">
-             ${isTracking ? '<span class="recording-dot"></span>' : ''}
-             ${totalDisplay}
-           </div>
-           <div class="timer-controls">
-             ${timerControls}
-             <button class="view-logs-btn" title="View Time Logs">${getIcon('clock')}</button>
-           </div>
-        </div>
-        ${memoPanelHtml}
-      `;
-  }
+  const hasDetails = Boolean(task.url || task.dueDate || (task.tags && task.tags.length) || isTracking);
 
   // 3. Footer Actions
-  let extraActions = '';
-  let editBtnHtml = '';
-  
-  if (task.status === 'done') {
-      extraActions = `<button class="view-logs-btn" title="View Time Logs">${getIcon('clock')}</button>`;
-  } else {
-      editBtnHtml = `<button class="edit-btn" aria-label="Edit">${getIcon('edit')}</button>`;
-  }
+  const logsBtnHtml = `<button class="view-logs-btn" title="View Time Logs">${getIcon('clock')}</button>`;
+  const editBtnHtml = task.status === 'done'
+    ? ''
+    : `<button class="edit-btn" aria-label="Edit">${getIcon('edit')}</button>`;
 
   div.innerHTML = `
-    <div class="task-header">
-       ${metadataBar}
+    <div class="task-primary-row">
+      <div class="task-content">${escapeHtml(task.content)}</div>
+      ${priorityHtml}
     </div>
-    <div class="task-content">${escapeHtml(task.content)}</div>
-    ${urlHtml}
-    ${timerHtml}
-    <div class="task-meta">
+    <div class="task-secondary-row task-timer ${isTracking ? 'is-running' : ''}">
+      <span class="task-timer-state ${timerStateClass}">${isTracking ? '<span class="recording-dot"></span>' : ''}${timerStateLabel}</span>
+      <span class="timer-display" id="timer-${task.id}">${totalDisplay}</span>
+    </div>
+    <div class="task-details ${hasDetails ? '' : 'is-empty'}">
+      ${urlHtml}
+      ${metadataHtml}
+      ${memoPanelHtml}
+    </div>
+    <div class="task-meta task-actions-row">
       <span>${new Date(task.createdAt).toLocaleDateString()}</span>
       <div class="task-actions">
-        ${extraActions}
+        ${timerControlHtml}
+        ${logsBtnHtml}
         ${editBtnHtml}
         <button class="delete-btn" aria-label="Delete">${getIcon('trash')}</button>
+        <button class="details-toggle" aria-label="Toggle Details" title="Toggle Details" aria-expanded="false">Details</button>
       </div>
     </div>
   `;
+
+
+  const detailsPanel = div.querySelector('.task-details');
+  if (detailsPanel) {
+    detailsPanel.hidden = true;
+  }
 
   // Drag Events (CRITICAL FIX)
   div.addEventListener('dragstart', () => {
@@ -569,6 +573,18 @@ function handleGlobalClick(e) {
           renderTasks();
           addToHistory('deleted', `Deleted "${task.content}"`);
       }
+  }
+
+
+  // Details Toggle
+  if (btn.classList.contains('details-toggle') && card) {
+      e.stopPropagation();
+      card.classList.toggle('is-expanded');
+      const details = card.querySelector('.task-details');
+      const expanded = card.classList.contains('is-expanded');
+      if (details) details.hidden = !expanded;
+      btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+      return;
   }
 
   // Time Logs
