@@ -1,7 +1,7 @@
 // UI Module
 import { state } from './state.js';
 import { saveData, exportBoardData, importBoardData } from './storage.js';
-import { toggleTimer, formatTime } from './timer.js';
+import { toggleTimer, formatTime, updateActiveMemoDraft } from './timer.js';
 import { addToHistory, clearHistory, formatTimeAgo } from './history.js';
 import { initDragSystem } from './drag.js';
 
@@ -24,6 +24,7 @@ const elements = {
   timeLogsModal: document.getElementById('time-logs-modal'),
   timeLogsList: document.getElementById('time-logs-list'),
   totalDurationContainer: document.getElementById('total-duration-container'),
+  memoHistoryList: document.getElementById('memo-history-list'),
   analyticsModal: document.getElementById('analytics-modal'),
   analyticsContent: document.getElementById('analytics-content'),
   filterSearch: document.getElementById('task-search'),
@@ -52,6 +53,29 @@ const elements = {
     done: document.querySelector('#done-col .count'),
   }
 };
+
+const memoDraftTimers = new Map();
+
+function queueMemoDraftSave(taskId, note, delay = 400) {
+  if (memoDraftTimers.has(taskId)) {
+    clearTimeout(memoDraftTimers.get(taskId));
+  }
+
+  const timer = setTimeout(() => {
+    updateActiveMemoDraft(taskId, note);
+    memoDraftTimers.delete(taskId);
+  }, delay);
+
+  memoDraftTimers.set(taskId, timer);
+}
+
+function flushMemoDraftSave(taskId, note) {
+  if (memoDraftTimers.has(taskId)) {
+    clearTimeout(memoDraftTimers.get(taskId));
+    memoDraftTimers.delete(taskId);
+  }
+  updateActiveMemoDraft(taskId, note);
+}
 
 // -- Render Functions --
 
@@ -158,10 +182,25 @@ function createTaskCard(task) {
       const isTracking = task.isTracking;
       const currentSession = isTracking ? Date.now() - task.lastStartTime : 0;
       const totalDisplay = formatTime(task.totalTime + currentSession);
-      
-      const timerControls = !isTracking 
-        ? `<button class="timer-btn start-btn" title="Start Timer" data-action="start">${getIcon('play')}</button>` 
+      const memoDraft = task.activeMemoSession?.note || '';
+
+      const timerControls = !isTracking
+        ? `<button class="timer-btn start-btn" title="Start Timer" data-action="start">${getIcon('play')}</button>`
         : `<button class="timer-btn pause-btn" title="Pause Timer" data-action="pause">${getIcon('pause')}</button>`;
+
+      const memoPanelHtml = isTracking
+        ? `
+          <div class="active-memo-panel">
+            <label for="memo-${task.id}">Session Memo</label>
+            <textarea
+              id="memo-${task.id}"
+              class="active-memo-input"
+              data-memo-task-id="${task.id}"
+              placeholder="Add a short summary while you work..."
+            >${escapeHtml(memoDraft)}</textarea>
+          </div>
+        `
+        : '';
 
       timerHtml = `
         <div class="task-timer ${isTracking ? 'is-running' : ''}">
@@ -174,6 +213,7 @@ function createTaskCard(task) {
              <button class="view-logs-btn" title="View Time Logs">${getIcon('clock')}</button>
            </div>
         </div>
+        ${memoPanelHtml}
       `;
   }
 
@@ -443,7 +483,28 @@ export function setupEventListeners() {
     document.getElementById('close-logs-btn').addEventListener('click', closeTimeLogsModal);
     window.addEventListener('click', handleGlobalClick);
 
+    document.addEventListener('input', handleMemoInput);
+    document.addEventListener('blur', handleMemoBlur, true);
+
     setupFilterListeners();
+}
+
+function handleMemoInput(e) {
+  if (!e.target.classList?.contains('active-memo-input')) return;
+
+  const taskId = e.target.dataset.memoTaskId;
+  if (!taskId) return;
+
+  queueMemoDraftSave(taskId, e.target.value);
+}
+
+function handleMemoBlur(e) {
+  if (!e.target.classList?.contains('active-memo-input')) return;
+
+  const taskId = e.target.dataset.memoTaskId;
+  if (!taskId) return;
+
+  flushMemoDraftSave(taskId, e.target.value);
 }
 
 function handleGlobalClick(e) {
@@ -453,15 +514,43 @@ function handleGlobalClick(e) {
   if (e.target === elements.timeLogsModal) closeTimeLogsModal();
   if (e.target === elements.analyticsModal) closeAnalyticsModal();
 
+  // Input Delegation for active memo autosave
+  if (e.target.classList?.contains('active-memo-input')) {
+    return;
+  }
+
   // Button Delegation
   const btn = e.target.closest('button');
   if (!btn) return;
   const card = btn.closest('.task-card');
-  
+
   // Timer Controls
   if (btn.classList.contains('timer-btn') && card) {
       e.stopPropagation();
-      toggleTimer(card.dataset.id, btn.dataset.action);
+      const taskId = card.dataset.id;
+      const action = btn.dataset.action;
+
+      if (action === 'pause') {
+        const task = state.tasks.find(t => t.id === taskId);
+        const memoInput = card.querySelector('.active-memo-input');
+        const note = memoInput ? memoInput.value.trim() : (task?.activeMemoSession?.note || '').trim();
+
+        if (memoInput) {
+          flushMemoDraftSave(taskId, memoInput.value);
+        }
+
+        if (!note) {
+          const shouldAddSummary = confirm('No memo summary was added for this session. Do you want to add one before stopping the timer?');
+          if (shouldAddSummary) {
+            if (memoInput) {
+              memoInput.focus();
+            }
+            return;
+          }
+        }
+      }
+
+      toggleTimer(taskId, action);
       renderTasks(); // Or update DOM specific part
   }
 
@@ -559,7 +648,9 @@ function handleTaskSubmit(e) {
       totalTime: 0,
       isTracking: false,
       lastStartTime: null,
-      timeLogs: []
+      timeLogs: [],
+      memoSessions: [],
+      activeMemoSession: null
     });
     addToHistory('created', `Created "${content}"`);
   }
@@ -762,12 +853,14 @@ function closeTimeLogsModal() {
 }
 function renderTimeLogs(task) {
     elements.timeLogsList.innerHTML = '';
+    if (elements.memoHistoryList) elements.memoHistoryList.innerHTML = '';
+
     // Calculate Total Time (including current session)
     let currentTotal = task.totalTime || 0;
     if (task.isTracking && task.lastStartTime) {
         currentTotal += (Date.now() - task.lastStartTime);
     }
-    
+
     // Update Header
     elements.totalDurationContainer.innerHTML = `
        <div class="simple-total-header">
@@ -775,37 +868,72 @@ function renderTimeLogs(task) {
        </div>
     `;
 
-    if(!task.timeLogs || task.timeLogs.length === 0) {
+    if (!task.timeLogs || task.timeLogs.length === 0) {
         elements.timeLogsList.innerHTML = '<p>No logs</p>';
-        return;
-    }
-    [...task.timeLogs].reverse().forEach(log => {
-        const start = new Date(log.start).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
-        const end = log.end ? new Date(log.end).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : 'Running...';
-        const duration = log.end ? formatTime(log.end - log.start) : '---';
+    } else {
+      [...task.timeLogs].reverse().forEach(log => {
+          const start = new Date(log.start).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
+          const end = log.end ? new Date(log.end).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : 'Running...';
+          const duration = log.end ? formatTime(log.end - log.start) : '---';
 
-        const div = document.createElement('div');
-        div.className = 'log-entry';
-        div.innerHTML = `
-          <div class="log-times">
-            <div class="log-row">
-                <span class="log-label">Start</span>
-                <span class="log-value">${start}</span>
+          const div = document.createElement('div');
+          div.className = 'log-entry';
+          div.innerHTML = `
+            <div class="log-times">
+              <div class="log-row">
+                  <span class="log-label">Start</span>
+                  <span class="log-value">${start}</span>
+              </div>
+              <div class="log-row">
+                  <span class="log-label">End</span>
+                  <span class="log-value">${end}</span>
+              </div>
             </div>
-            <div class="log-row">
-                <span class="log-label">End</span>
-                <span class="log-value">${end}</span>
+            <div class="log-duration-badge">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                  <path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/>
+                  <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/>
+              </svg>
+              <span>${duration}</span>
             </div>
-          </div>
-          <div class="log-duration-badge">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
-                <path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/>
-                <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/>
-            </svg>
-            <span>${duration}</span>
-          </div>
-        `;
-        elements.timeLogsList.appendChild(div);
+          `;
+          elements.timeLogsList.appendChild(div);
+      });
+    }
+
+    if (!elements.memoHistoryList) return;
+
+    const memoSessions = task.memoSessions || [];
+    const activeDraft = task.activeMemoSession
+      ? [{ ...task.activeMemoSession, duration: task.lastStartTime ? Date.now() - task.lastStartTime : null, endedAt: null, isDraft: true }]
+      : [];
+    const allMemoEntries = [...activeDraft, ...memoSessions].reverse();
+
+    if (allMemoEntries.length === 0) {
+      elements.memoHistoryList.innerHTML = '<p>No memo sessions yet</p>';
+      return;
+    }
+
+    allMemoEntries.forEach(session => {
+      const entry = document.createElement('div');
+      entry.className = `memo-history-entry ${session.isDraft ? 'is-draft' : ''}`;
+
+      const startedAt = session.startedAt ? new Date(session.startedAt) : null;
+      const periodLabel = startedAt && !Number.isNaN(startedAt.getTime())
+        ? startedAt.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
+        : 'Unknown time';
+      const durationLabel = Number.isFinite(session.duration) ? formatTime(session.duration) : 'Running...';
+      const noteText = (session.note || '').trim() || 'No summary added.';
+
+      entry.innerHTML = `
+        <div class="memo-history-meta">
+          <span class="memo-history-time">${periodLabel}</span>
+          <span class="memo-history-duration">${durationLabel}</span>
+        </div>
+        <p class="memo-history-note">${escapeHtml(noteText)}</p>
+      `;
+
+      elements.memoHistoryList.appendChild(entry);
     });
 }
 

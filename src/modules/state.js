@@ -3,6 +3,7 @@
 export const state = {
   tasks: [],
   history: [],
+  activeMemoDraftTaskId: null,
   viewedTaskId: null, // For UI tracking
   draggedTask: null,  // For Drag & Drop
   wipLimits: {
