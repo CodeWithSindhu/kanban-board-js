@@ -31,6 +31,7 @@ const elements = {
   filterTags: document.getElementById('filter-tags'),
   filterStatus: document.getElementById('filter-status'),
   filterDueDate: document.getElementById('filter-due-date'),
+  sortDueDate: document.getElementById('sort-due-date'),
   
   columns: {
     todo: document.getElementById('todo-container'),
@@ -58,7 +59,7 @@ export function renderTasks() {
   updateTagFilterOptions(state.tasks);
   updateFilterIndicators();
 
-  const filteredTasks = applyFilters(state.tasks);
+  const filteredTasks = sortTasksByDueDate(applyFilters(state.tasks));
   const hasActiveFilters = Boolean(
     state.filters.search.trim() ||
     state.filters.priority !== 'all' ||
@@ -128,6 +129,16 @@ function createTaskCard(task) {
   div.dataset.id = task.id;
   // Metadata attributes for easier debug/css
   div.dataset.priority = task.priority || 'medium';
+  const dueTimestamp = task.dueDate ? new Date(task.dueDate).getTime() : null;
+  if (Number.isFinite(dueTimestamp)) {
+    const now = Date.now();
+    const msInDay = 24 * 60 * 60 * 1000;
+    if (dueTimestamp < now) {
+      div.classList.add('is-overdue');
+    } else if (dueTimestamp - now <= msInDay) {
+      div.classList.add('is-due-soon');
+    }
+  }
 
   // --- Template Parts ---
   
@@ -218,6 +229,10 @@ function createEmptyState() {
 function setupFilterListeners() {
   if (!elements.filterSearch) return;
 
+  if (elements.sortDueDate) {
+    elements.sortDueDate.value = state.filters.sortDueDate;
+  }
+
   elements.filterSearch.addEventListener('input', () => {
     state.filters.search = elements.filterSearch.value;
     renderTasks();
@@ -240,6 +255,11 @@ function setupFilterListeners() {
 
   elements.filterDueDate?.addEventListener('change', () => {
     state.filters.dueDate = elements.filterDueDate.value;
+    renderTasks();
+  });
+
+  elements.sortDueDate?.addEventListener('change', () => {
+    state.filters.sortDueDate = elements.sortDueDate.value;
     renderTasks();
   });
 }
@@ -271,6 +291,30 @@ function applyFilters(tasks) {
 
     return true;
   });
+}
+
+
+function sortTasksByDueDate(tasks) {
+  const sortOrder = state.filters.sortDueDate || 'none';
+  if (sortOrder === 'none') return tasks;
+
+  const sortedTasks = [...tasks];
+  sortedTasks.sort((a, b) => {
+    const aHasDueDate = Boolean(a.dueDate);
+    const bHasDueDate = Boolean(b.dueDate);
+
+    if (!aHasDueDate && !bHasDueDate) return 0;
+    if (!aHasDueDate) return 1;
+    if (!bHasDueDate) return -1;
+
+    const aTime = new Date(a.dueDate).getTime();
+    const bTime = new Date(b.dueDate).getTime();
+
+    if (aTime === bTime) return 0;
+    return sortOrder === 'desc' ? bTime - aTime : aTime - bTime;
+  });
+
+  return sortedTasks;
 }
 
 function matchesDueDateFilter(task, filterValue) {
@@ -338,7 +382,8 @@ function updateFilterIndicators() {
     [elements.filterPriority, state.filters.priority !== 'all'],
     [elements.filterTags, state.filters.tag !== 'all'],
     [elements.filterStatus, state.filters.status !== 'all'],
-    [elements.filterDueDate, state.filters.dueDate !== 'all']
+    [elements.filterDueDate, state.filters.dueDate !== 'all'],
+    [elements.sortDueDate, state.filters.sortDueDate !== 'none']
   ]);
 
   filterMap.forEach((isActive, element) => {

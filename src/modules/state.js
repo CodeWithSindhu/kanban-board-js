@@ -16,7 +16,8 @@ export const state = {
     priority: 'all',
     tag: 'all',
     status: 'all',
-    dueDate: 'all'
+    dueDate: 'all',
+    sortDueDate: 'none'
   }
 };
 
