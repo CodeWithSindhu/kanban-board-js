@@ -24,6 +24,8 @@ const elements = {
   timeLogsModal: document.getElementById('time-logs-modal'),
   timeLogsList: document.getElementById('time-logs-list'),
   totalDurationContainer: document.getElementById('total-duration-container'),
+  analyticsModal: document.getElementById('analytics-modal'),
+  analyticsContent: document.getElementById('analytics-content'),
   filterSearch: document.getElementById('task-search'),
   filterPriority: document.getElementById('filter-priority'),
   filterTags: document.getElementById('filter-tags'),
@@ -357,6 +359,8 @@ export function setupEventListeners() {
     // History Modal
     document.getElementById('history-btn').addEventListener('click', openHistoryModal);
     document.getElementById('close-history').addEventListener('click', closeHistoryModal);
+    document.getElementById('analytics-btn').addEventListener('click', openAnalyticsModal);
+    document.getElementById('close-analytics').addEventListener('click', closeAnalyticsModal);
     document.getElementById('clear-history-btn').addEventListener('click', () => {
         if(confirm('Clear history?')) { clearHistory(); renderHistory(); }
     });
@@ -402,6 +406,7 @@ function handleGlobalClick(e) {
   if (e.target === elements.modal) closeModal();
   if (e.target === elements.historyModal) closeHistoryModal();
   if (e.target === elements.timeLogsModal) closeTimeLogsModal();
+  if (e.target === elements.analyticsModal) closeAnalyticsModal();
 
   // Button Delegation
   const btn = e.target.closest('button');
@@ -587,6 +592,110 @@ function renderHistory() {
     `;
     elements.historyList.appendChild(item);
   });
+}
+
+function openAnalyticsModal() {
+    elements.analyticsModal.classList.add('active');
+    renderAnalytics();
+}
+
+function closeAnalyticsModal() {
+    elements.analyticsModal.classList.remove('active');
+}
+
+function renderAnalytics() {
+    if (!elements.analyticsContent) return;
+
+    const now = Date.now();
+    const totalTracked = state.tasks.reduce((sum, task) => {
+      const activeSession = task.isTracking && task.lastStartTime ? now - task.lastStartTime : 0;
+      return sum + (task.totalTime || 0) + activeSession;
+    }, 0);
+
+    const statusLabels = {
+      todo: 'To Do',
+      progress: 'In Progress',
+      'on-hold': 'On Hold',
+      done: 'Done'
+    };
+
+    const timeByStatus = state.tasks.reduce((acc, task) => {
+      const statusKey = task.status || 'todo';
+      acc[statusKey] = (acc[statusKey] || 0) + (task.totalTime || 0);
+      return acc;
+    }, { todo: 0, progress: 0, 'on-hold': 0, done: 0 });
+
+    const doneTasks = state.tasks.filter(task => task.status === 'done');
+    const completedPerDay = doneTasks.reduce((acc, task) => {
+      const createdDate = new Date(task.createdAt);
+      if (Number.isNaN(createdDate.getTime())) return acc;
+      const dayKey = createdDate.toISOString().slice(0, 10);
+      acc[dayKey] = (acc[dayKey] || 0) + 1;
+      return acc;
+    }, {});
+
+    const completedPerWeek = doneTasks.reduce((acc, task) => {
+      const createdDate = new Date(task.createdAt);
+      if (Number.isNaN(createdDate.getTime())) return acc;
+      const weekStart = getWeekStart(createdDate).toISOString().slice(0, 10);
+      acc[weekStart] = (acc[weekStart] || 0) + 1;
+      return acc;
+    }, {});
+
+    const renderCountList = (entries, emptyText) => {
+      if (entries.length === 0) return `<p class="analytics-empty">${emptyText}</p>`;
+      return entries.map(([period, count]) => `
+        <div class="analytics-row">
+          <span class="analytics-label">${period}</span>
+          <span class="analytics-value">${count}</span>
+        </div>
+      `).join('');
+    };
+
+    const dayEntries = Object.entries(completedPerDay).sort(([a], [b]) => b.localeCompare(a));
+    const weekEntries = Object.entries(completedPerWeek).sort(([a], [b]) => b.localeCompare(a));
+
+    elements.analyticsContent.innerHTML = `
+      <section class="analytics-section analytics-highlight">
+        <h3>Total time tracked</h3>
+        <p class="analytics-total-time">${formatTime(totalTracked)}</p>
+      </section>
+
+      <section class="analytics-section">
+        <h3>Time by status</h3>
+        <div class="analytics-grid">
+          ${Object.keys(statusLabels).map((status) => `
+            <div class="analytics-card">
+              <span class="analytics-card-title">${statusLabels[status]}</span>
+              <span class="analytics-card-time">${formatTime(timeByStatus[status] || 0)}</span>
+            </div>
+          `).join('')}
+        </div>
+      </section>
+
+      <section class="analytics-section">
+        <h3>Tasks completed per day</h3>
+        <div class="analytics-list">
+          ${renderCountList(dayEntries, 'No completed tasks yet')}
+        </div>
+      </section>
+
+      <section class="analytics-section">
+        <h3>Tasks completed per week</h3>
+        <div class="analytics-list">
+          ${renderCountList(weekEntries, 'No completed tasks yet')}
+        </div>
+      </section>
+    `;
+}
+
+function getWeekStart(date) {
+    const localDate = new Date(date);
+    const day = localDate.getDay();
+    const diff = (day + 6) % 7;
+    localDate.setDate(localDate.getDate() - diff);
+    localDate.setHours(0, 0, 0, 0);
+    return localDate;
 }
 
 function formatStatus(status) {
