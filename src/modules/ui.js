@@ -55,6 +55,50 @@ const elements = {
 };
 
 const memoDraftTimers = new Map();
+const memoSaveStatusTimestamps = new Map();
+
+function getSessionStateMeta(task) {
+  const memoNote = task.activeMemoSession?.note?.trim() || '';
+
+  if (task.isTracking) {
+    return memoNote
+      ? { label: 'Recording', tone: 'recording' }
+      : { label: 'Awaiting summary', tone: 'awaiting' };
+  }
+
+  return { label: 'Paused', tone: 'paused' };
+}
+
+function getMemoSaveStatusText(taskId) {
+  const lastSavedAt = memoSaveStatusTimestamps.get(taskId);
+  if (!lastSavedAt) return '';
+
+  return Date.now() - lastSavedAt <= 5000 ? 'Autosaved just now' : 'Draft saved';
+}
+
+function getTaskCardById(taskId) {
+  return Array.from(document.querySelectorAll('.task-card')).find(card => card.dataset.id === taskId) || null;
+}
+
+function syncMemoSessionUiState(taskId) {
+  const task = state.tasks.find(t => t.id === taskId);
+  if (!task) return;
+
+  const card = getTaskCardById(taskId);
+  if (!card) return;
+
+  const chip = card.querySelector('[data-session-state-chip]');
+  if (chip) {
+    const chipMeta = getSessionStateMeta(task);
+    chip.textContent = chipMeta.label;
+    chip.className = `session-state-chip session-state-chip--${chipMeta.tone}`;
+  }
+
+  const saveStatus = card.querySelector('[data-memo-save-status]');
+  if (saveStatus) {
+    saveStatus.textContent = getMemoSaveStatusText(taskId);
+  }
+}
 
 function queueMemoDraftSave(taskId, note, delay = 400) {
   if (memoDraftTimers.has(taskId)) {
@@ -63,6 +107,8 @@ function queueMemoDraftSave(taskId, note, delay = 400) {
 
   const timer = setTimeout(() => {
     updateActiveMemoDraft(taskId, note);
+    memoSaveStatusTimestamps.set(taskId, Date.now());
+    syncMemoSessionUiState(taskId);
     memoDraftTimers.delete(taskId);
   }, delay);
 
@@ -75,6 +121,8 @@ function flushMemoDraftSave(taskId, note) {
     memoDraftTimers.delete(taskId);
   }
   updateActiveMemoDraft(taskId, note);
+  memoSaveStatusTimestamps.set(taskId, Date.now());
+  syncMemoSessionUiState(taskId);
 }
 
 // -- Render Functions --
@@ -186,6 +234,7 @@ function createTaskCard(task) {
         ? 'Running'
         : 'Paused';
   const timerStateClass = isTracking ? 'is-active' : '';
+  const sessionStateMeta = getSessionStateMeta(task);
 
   const timerControlHtml = (task.status !== 'todo' && task.status !== 'done')
     ? !isTracking
@@ -194,16 +243,23 @@ function createTaskCard(task) {
     : '';
 
   const memoDraft = task.activeMemoSession?.note || '';
+  const sessionStartTime = task.activeMemoSession?.startedAt
+    ? new Date(task.activeMemoSession.startedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+    : null;
+  const memoSaveStatusText = getMemoSaveStatusText(task.id);
   const memoPanelHtml = isTracking
     ? `
       <div class="active-memo-panel">
         <label for="memo-${task.id}">Session Memo</label>
+        <p class="memo-guidance-text">1–2 sentence summary of what you finished and what is next.</p>
+        <p class="memo-guidance-text">Session started at ${escapeHtml(sessionStartTime || 'now')}.</p>
         <textarea
           id="memo-${task.id}"
           class="active-memo-input"
           data-memo-task-id="${task.id}"
           placeholder="Add a short summary while you work..."
         >${escapeHtml(memoDraft)}</textarea>
+        <p class="memo-save-status" data-memo-save-status="${task.id}" aria-live="polite">${escapeHtml(memoSaveStatusText)}</p>
       </div>
     `
     : '<div class="active-memo-panel"><span class="task-muted">Start a timer session to capture notes.</span></div>';
@@ -222,7 +278,10 @@ function createTaskCard(task) {
       ${priorityHtml}
     </div>
     <div class="task-secondary-row task-timer ${isTracking ? 'is-running' : ''}">
-      <span class="task-timer-state ${timerStateClass}">${isTracking ? '<span class="recording-dot"></span>' : ''}${timerStateLabel}</span>
+      <div class="task-timer-header">
+        <span class="task-timer-state ${timerStateClass}">${isTracking ? '<span class="recording-dot"></span>' : ''}${timerStateLabel}</span>
+        <span class="session-state-chip session-state-chip--${sessionStateMeta.tone}" data-session-state-chip>${sessionStateMeta.label}</span>
+      </div>
       <span class="timer-display" id="timer-${task.id}">${totalDisplay}</span>
     </div>
     <div class="task-details ${hasDetails ? '' : 'is-empty'}">
