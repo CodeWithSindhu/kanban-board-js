@@ -22,6 +22,9 @@ const elements = {
   recurrenceSettingsContainer: document.querySelector('.recurrence-settings'),
   taskTagsContainer: document.getElementById('task-tags'),
   taskTagsInput: document.getElementById('task-tags-input'),
+  subtaskInput: document.getElementById('subtask-input'),
+  addSubtaskBtn: document.getElementById('add-subtask-btn'),
+  taskSubtasksList: document.getElementById('task-subtasks'),
   
   historyModal: document.getElementById('history-modal'),
   historyList: document.getElementById('history-list'),
@@ -94,6 +97,76 @@ function formatRecurrenceBadge(task) {
   const intervalText = recurrence.recurrenceInterval === 1 ? `every ${single}` : `every ${recurrence.recurrenceInterval} ${plural}`;
 
   return `🔁 Repeats ${intervalText}`;
+}
+
+function normalizeSubtaskText(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function getSubtaskProgress(task) {
+  const subtasks = Array.isArray(task.subtasks) ? task.subtasks : [];
+  const total = subtasks.length;
+  const done = subtasks.filter(subtask => subtask.done).length;
+  return {
+    done,
+    total,
+    ratio: total === 0 ? 0 : done / total
+  };
+}
+
+function getSubtaskProgressTone(ratio) {
+  if (ratio >= 1) return 'complete';
+  if (ratio >= 0.5) return 'mid';
+  return 'low';
+}
+
+function renderModalSubtasks(subtasks = []) {
+  if (!elements.taskSubtasksList) return;
+
+  elements.taskSubtasksList.innerHTML = '';
+
+  if (subtasks.length === 0) {
+    elements.taskSubtasksList.innerHTML = '<li class="subtask-empty">No subtasks yet.</li>';
+    return;
+  }
+
+  subtasks.forEach(subtask => {
+    const li = document.createElement('li');
+    li.className = 'subtask-item';
+    li.dataset.subtaskId = subtask.id;
+    li.innerHTML = `
+      <label>
+        <input type="checkbox" class="modal-subtask-toggle" ${subtask.done ? 'checked' : ''} />
+        <span class="subtask-text ${subtask.done ? 'is-done' : ''}">${escapeHtml(subtask.text)}</span>
+      </label>
+      <button type="button" class="modal-subtask-remove" aria-label="Remove subtask">×</button>
+    `;
+    elements.taskSubtasksList.appendChild(li);
+  });
+}
+
+function getModalSubtasks() {
+  if (!elements.taskSubtasksList) return [];
+
+  return Array.from(elements.taskSubtasksList.querySelectorAll('.subtask-item')).map(item => ({
+    id: item.dataset.subtaskId || generateId(),
+    text: normalizeSubtaskText(item.querySelector('.subtask-text')?.textContent || ''),
+    done: Boolean(item.querySelector('.modal-subtask-toggle')?.checked)
+  })).filter(subtask => subtask.text);
+}
+
+function addModalSubtask(text) {
+  const normalized = normalizeSubtaskText(text);
+  if (!normalized) return;
+
+  const subtasks = getModalSubtasks();
+  subtasks.push({ id: generateId(), text: normalized, done: false });
+  renderModalSubtasks(subtasks);
+
+  if (elements.subtaskInput) {
+    elements.subtaskInput.value = '';
+    elements.subtaskInput.focus();
+  }
 }
 
 function syncRecurrenceFieldState() {
@@ -266,6 +339,30 @@ function createTaskCard(task) {
   const urlHtml = task.url
     ? `<a class="task-link" href="${escapeHtml(normalizeUrl(task.url))}" target="_blank" rel="noopener noreferrer">${escapeHtml(formatUrlLabel(task.url))}</a>`
     : '';
+  const subtaskProgress = getSubtaskProgress(task);
+  const progressTone = getSubtaskProgressTone(subtaskProgress.ratio);
+  const progressHtml = subtaskProgress.total > 0
+    ? `
+      <div class="task-progress"> 
+        <div class="task-progress-header"> 
+          <span class="task-progress-label">Subtasks</span>
+          <span class="task-progress-count">${subtaskProgress.done}/${subtaskProgress.total}</span>
+        </div>
+        <div class="task-progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="${subtaskProgress.total}" aria-valuenow="${subtaskProgress.done}"> 
+          <span class="task-progress-fill task-progress-fill--${progressTone}" style="width:${subtaskProgress.ratio * 100}%"></span>
+        </div>
+      </div>
+    `
+    : '';
+  const subtaskPreviewHtml = subtaskProgress.total > 0
+    ? `<ul class="subtask-preview-list">${(task.subtasks || []).slice(0, 3).map(subtask => `<li class="subtask-preview-item ${subtask.done ? 'is-done' : ''}"><button class="subtask-toggle-btn" data-subtask-id="${subtask.id}" title="Toggle subtask">${subtask.done ? '✓' : '○'}</button><span class="subtask-preview-text">${escapeHtml(subtask.text)}</span><button class="subtask-remove-btn" data-subtask-id="${subtask.id}" title="Remove subtask">×</button></li>`).join('')}${subtaskProgress.total > 3 ? `<li class="subtask-preview-more">+${subtaskProgress.total - 3} more</li>` : ''}</ul>`
+    : '';
+  const subtaskQuickAddHtml = `
+    <div class="subtask-quick-add"> 
+      <input type="text" class="subtask-inline-input" data-task-id="${task.id}" placeholder="Add subtask..." aria-label="Add subtask" />
+      <button class="subtask-inline-add-btn" data-task-id="${task.id}" title="Add subtask">Add</button>
+    </div>
+  `;
   const metadataHtml = dateHtml || recurrenceHtml || tagsHtml
     ? `<div class="task-metadata-bar">${dateHtml} ${recurrenceHtml} ${tagsHtml}</div>`
     : '<div class="task-metadata-bar"><span class="task-muted">No metadata added</span></div>';
@@ -315,7 +412,7 @@ function createTaskCard(task) {
     `
     : '<div class="active-memo-panel"><span class="task-muted">Start a timer session to capture notes.</span></div>';
 
-  const hasDetails = Boolean(task.url || task.dueDate || recurrenceHtml || (task.tags && task.tags.length) || isTracking);
+  const hasDetails = Boolean(task.url || task.dueDate || recurrenceHtml || (task.tags && task.tags.length) || (task.subtasks && task.subtasks.length) || isTracking);
 
   // 3. Footer Actions
   const logsBtnHtml = `<button class="view-logs-btn" title="View Time Logs">${getIcon('clock')}</button>`;
@@ -338,6 +435,9 @@ function createTaskCard(task) {
     <div class="task-details ${hasDetails ? '' : 'is-empty'}">
       ${urlHtml}
       ${metadataHtml}
+      ${progressHtml}
+      ${subtaskPreviewHtml}
+      ${subtaskQuickAddHtml}
       ${memoPanelHtml}
     </div>
     <div class="task-meta task-actions-row">
@@ -555,6 +655,38 @@ export function setupEventListeners() {
     // Tag Chip Input
     setupTagsInput();
 
+    if (elements.addSubtaskBtn) {
+      elements.addSubtaskBtn.addEventListener('click', () => {
+        addModalSubtask(elements.subtaskInput?.value || '');
+      });
+    }
+
+    if (elements.subtaskInput) {
+      elements.subtaskInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          addModalSubtask(elements.subtaskInput.value);
+        }
+      });
+    }
+
+    if (elements.taskSubtasksList) {
+      elements.taskSubtasksList.addEventListener('click', (e) => {
+        const removeBtn = e.target.closest('.modal-subtask-remove');
+        if (!removeBtn) return;
+        removeBtn.closest('.subtask-item')?.remove();
+        if (elements.taskSubtasksList.querySelectorAll('.subtask-item').length === 0) {
+          renderModalSubtasks([]);
+        }
+      });
+
+      elements.taskSubtasksList.addEventListener('change', (e) => {
+        if (!e.target.classList.contains('modal-subtask-toggle')) return;
+        const text = e.target.closest('.subtask-item')?.querySelector('.subtask-text');
+        if (text) text.classList.toggle('is-done', e.target.checked);
+      });
+    }
+
     // History Modal
     document.getElementById('history-btn').addEventListener('click', openHistoryModal);
     document.getElementById('close-history').addEventListener('click', closeHistoryModal);
@@ -599,6 +731,18 @@ export function setupEventListeners() {
 
     document.addEventListener('input', handleMemoInput);
     document.addEventListener('blur', handleMemoBlur, true);
+    document.addEventListener('keydown', (e) => {
+      if (!e.target.classList?.contains('subtask-inline-input')) return;
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      const taskId = e.target.dataset.taskId;
+      const task = state.tasks.find(t => t.id === taskId);
+      const text = normalizeSubtaskText(e.target.value);
+      if (!task || !text) return;
+      task.subtasks = [...(task.subtasks || []), { id: generateId(), text, done: false }];
+      saveData();
+      renderTasks();
+    });
 
     if (elements.taskRecurrenceTypeInput) {
       elements.taskRecurrenceTypeInput.addEventListener('change', syncRecurrenceFieldState);
@@ -691,6 +835,44 @@ function handleGlobalClick(e) {
   }
 
 
+  // Card subtask controls
+  if (btn.classList.contains('subtask-toggle-btn') && card) {
+      e.stopPropagation();
+      const task = state.tasks.find(t => t.id === card.dataset.id);
+      const subtaskId = btn.dataset.subtaskId;
+      if (!task || !subtaskId) return;
+      task.subtasks = (task.subtasks || []).map(subtask => subtask.id === subtaskId
+        ? { ...subtask, done: !subtask.done }
+        : subtask
+      );
+      saveData();
+      renderTasks();
+      return;
+  }
+
+  if (btn.classList.contains('subtask-remove-btn') && card) {
+      e.stopPropagation();
+      const task = state.tasks.find(t => t.id === card.dataset.id);
+      const subtaskId = btn.dataset.subtaskId;
+      if (!task || !subtaskId) return;
+      task.subtasks = (task.subtasks || []).filter(subtask => subtask.id !== subtaskId);
+      saveData();
+      renderTasks();
+      return;
+  }
+
+  if (btn.classList.contains('subtask-inline-add-btn') && card) {
+      e.stopPropagation();
+      const task = state.tasks.find(t => t.id === card.dataset.id);
+      const input = card.querySelector('.subtask-inline-input');
+      const text = normalizeSubtaskText(input?.value || '');
+      if (!task || !text) return;
+      task.subtasks = [...(task.subtasks || []), { id: generateId(), text, done: false }];
+      saveData();
+      renderTasks();
+      return;
+  }
+
   // Details Toggle
   if (btn.classList.contains('details-toggle') && card) {
       e.stopPropagation();
@@ -732,6 +914,7 @@ function openModal(task = null) {
     if(task.tags && task.tags.length > 0) {
       task.tags.forEach(tag => addTagChip(tag));
     }
+    renderModalSubtasks(task.subtasks || []);
   } else {
     elements.modalTitle.innerText = 'Add New Task';
     elements.taskIdInput.value = '';
@@ -742,6 +925,7 @@ function openModal(task = null) {
     if (elements.taskRecurrenceTypeInput) elements.taskRecurrenceTypeInput.value = 'none';
     if (elements.taskRecurrenceIntervalInput) elements.taskRecurrenceIntervalInput.value = '1';
     if (elements.taskRecurrenceEndInput) elements.taskRecurrenceEndInput.value = '';
+    renderModalSubtasks([]);
   }
   syncRecurrenceFieldState();
   elements.taskDescInput.focus();
@@ -767,6 +951,7 @@ function handleTaskSubmit(e) {
     recurrenceEnd
   });
   const tags = getTagsFromChips();
+  const subtasks = getModalSubtasks();
 
   if (!content) return;
 
@@ -781,6 +966,7 @@ function handleTaskSubmit(e) {
         task.recurrenceType = recurrence.recurrenceType;
         task.recurrenceInterval = recurrence.recurrenceInterval;
         task.recurrenceEnd = recurrence.recurrenceEnd;
+        task.subtasks = subtasks;
     }
   } else {
     const newId = generateId();
@@ -801,7 +987,8 @@ function handleTaskSubmit(e) {
       lastStartTime: null,
       timeLogs: [],
       memoSessions: [],
-      activeMemoSession: null
+      activeMemoSession: null,
+      subtasks
     });
     addToHistory('created', `Created "${content}"`);
   }
