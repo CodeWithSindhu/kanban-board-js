@@ -1,5 +1,5 @@
 // Storage Module
-import { state } from './state.js';
+import { state, normalizeTaskRecurrence } from './state.js';
 
 const TASKS_KEY = 'kanban-tasks';
 const HISTORY_KEY = 'kanban-history';
@@ -22,7 +22,8 @@ export function loadData() {
       priority: task.priority || 'medium',
       dueDate: task.dueDate || null,
       tags: task.tags || [],
-      url: task.url || ''
+      url: task.url || '',
+      ...normalizeTaskRecurrence(task)
     }));
 
     const activeMemoTask = state.tasks.find(task => task.isTracking && task.activeMemoSession);
@@ -76,7 +77,8 @@ export function importBoardData(jsonString) {
       state.tasks = data.tasks.map(task => ({
         ...task,
         memoSessions: task.memoSessions || [],
-        activeMemoSession: task.activeMemoSession || null
+        activeMemoSession: task.activeMemoSession || null,
+        ...normalizeTaskRecurrence(task)
       }));
       saveData();
     }

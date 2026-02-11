@@ -1,5 +1,5 @@
 // UI Module
-import { state } from './state.js';
+import { state, generateId, normalizeTaskRecurrence } from './state.js';
 import { saveData, exportBoardData, importBoardData } from './storage.js';
 import { toggleTimer, formatTime, updateActiveMemoDraft } from './timer.js';
 import { addToHistory, clearHistory, formatTimeAgo } from './history.js';
@@ -16,6 +16,10 @@ const elements = {
   // New Fields
   taskPriorityInput: document.getElementById('task-priority'),
   taskDueDateInput: document.getElementById('task-due-date'),
+  taskRecurrenceTypeInput: document.getElementById('task-recurrence-type'),
+  taskRecurrenceIntervalInput: document.getElementById('task-recurrence-interval'),
+  taskRecurrenceEndInput: document.getElementById('task-recurrence-end'),
+  recurrenceSettingsContainer: document.querySelector('.recurrence-settings'),
   taskTagsContainer: document.getElementById('task-tags'),
   taskTagsInput: document.getElementById('task-tags-input'),
   
@@ -74,6 +78,45 @@ function getMemoSaveStatusText(taskId) {
   if (!lastSavedAt) return '';
 
   return Date.now() - lastSavedAt <= 5000 ? 'Autosaved just now' : 'Draft saved';
+}
+
+function formatRecurrenceBadge(task) {
+  const recurrence = normalizeTaskRecurrence(task);
+  if (recurrence.recurrenceType === 'none') return '';
+
+  const unitMap = {
+    daily: ['day', 'days'],
+    weekly: ['week', 'weeks'],
+    monthly: ['month', 'months']
+  };
+
+  const [single, plural] = unitMap[recurrence.recurrenceType] || ['cycle', 'cycles'];
+  const intervalText = recurrence.recurrenceInterval === 1 ? `every ${single}` : `every ${recurrence.recurrenceInterval} ${plural}`;
+
+  return `🔁 Repeats ${intervalText}`;
+}
+
+function syncRecurrenceFieldState() {
+  if (!elements.taskRecurrenceTypeInput) return;
+
+  const isRecurring = elements.taskRecurrenceTypeInput.value !== 'none';
+  if (elements.recurrenceSettingsContainer) {
+    elements.recurrenceSettingsContainer.classList.toggle('is-disabled', !isRecurring);
+  }
+
+  if (elements.taskRecurrenceIntervalInput) {
+    elements.taskRecurrenceIntervalInput.disabled = !isRecurring;
+    if (!isRecurring) {
+      elements.taskRecurrenceIntervalInput.value = '1';
+    }
+  }
+
+  if (elements.taskRecurrenceEndInput) {
+    elements.taskRecurrenceEndInput.disabled = !isRecurring;
+    if (!isRecurring) {
+      elements.taskRecurrenceEndInput.value = '';
+    }
+  }
 }
 
 function getTaskCardById(taskId) {
@@ -215,12 +258,16 @@ function createTaskCard(task) {
   // --- Template Parts ---
   const priorityHtml = task.priority ? `<span class="badge badge-${task.priority}">${task.priority}</span>` : '';
   const dateHtml = task.dueDate ? `<span class="badge badge-date">📅 ${new Date(task.dueDate).toLocaleDateString()}</span>` : '';
+  const recurrenceBadgeText = formatRecurrenceBadge(task);
+  const recurrenceHtml = recurrenceBadgeText
+    ? `<span class="badge badge-recurrence">${escapeHtml(recurrenceBadgeText)}</span>`
+    : '';
   const tagsHtml = (task.tags || []).map(tag => `<span class="badge badge-tag">#${tag}</span>`).join('');
   const urlHtml = task.url
     ? `<a class="task-link" href="${escapeHtml(normalizeUrl(task.url))}" target="_blank" rel="noopener noreferrer">${escapeHtml(formatUrlLabel(task.url))}</a>`
     : '';
-  const metadataHtml = dateHtml || tagsHtml
-    ? `<div class="task-metadata-bar">${dateHtml} ${tagsHtml}</div>`
+  const metadataHtml = dateHtml || recurrenceHtml || tagsHtml
+    ? `<div class="task-metadata-bar">${dateHtml} ${recurrenceHtml} ${tagsHtml}</div>`
     : '<div class="task-metadata-bar"><span class="task-muted">No metadata added</span></div>';
 
   const isTracking = Boolean(task.isTracking);
@@ -235,6 +282,10 @@ function createTaskCard(task) {
         : 'Paused';
   const timerStateClass = isTracking ? 'is-active' : '';
   const sessionStateMeta = getSessionStateMeta(task);
+  const showSessionChip = isTracking && task.status !== 'todo' && task.status !== 'done';
+  const sessionStateChipHtml = showSessionChip
+    ? `<span class="session-state-chip session-state-chip--${sessionStateMeta.tone}" data-session-state-chip>${sessionStateMeta.label}</span>`
+    : '';
 
   const timerControlHtml = (task.status !== 'todo' && task.status !== 'done')
     ? !isTracking
@@ -264,7 +315,7 @@ function createTaskCard(task) {
     `
     : '<div class="active-memo-panel"><span class="task-muted">Start a timer session to capture notes.</span></div>';
 
-  const hasDetails = Boolean(task.url || task.dueDate || (task.tags && task.tags.length) || isTracking);
+  const hasDetails = Boolean(task.url || task.dueDate || recurrenceHtml || (task.tags && task.tags.length) || isTracking);
 
   // 3. Footer Actions
   const logsBtnHtml = `<button class="view-logs-btn" title="View Time Logs">${getIcon('clock')}</button>`;
@@ -280,7 +331,7 @@ function createTaskCard(task) {
     <div class="task-secondary-row task-timer ${isTracking ? 'is-running' : ''}">
       <div class="task-timer-header">
         <span class="task-timer-state ${timerStateClass}">${isTracking ? '<span class="recording-dot"></span>' : ''}${timerStateLabel}</span>
-        <span class="session-state-chip session-state-chip--${sessionStateMeta.tone}" data-session-state-chip>${sessionStateMeta.label}</span>
+        ${sessionStateChipHtml}
       </div>
       <span class="timer-display" id="timer-${task.id}">${totalDisplay}</span>
     </div>
@@ -549,6 +600,11 @@ export function setupEventListeners() {
     document.addEventListener('input', handleMemoInput);
     document.addEventListener('blur', handleMemoBlur, true);
 
+    if (elements.taskRecurrenceTypeInput) {
+      elements.taskRecurrenceTypeInput.addEventListener('change', syncRecurrenceFieldState);
+    }
+    syncRecurrenceFieldState();
+
     setupFilterListeners();
 }
 
@@ -667,7 +723,11 @@ function openModal(task = null) {
     if (elements.taskUrlInput) elements.taskUrlInput.value = task.url || '';
     // New fields
     if(elements.taskPriorityInput) elements.taskPriorityInput.value = task.priority || 'medium';
-    if(elements.taskDueDateInput && task.dueDate) elements.taskDueDateInput.value = task.dueDate.slice(0, 10); // YYYY-MM-DD
+    if (elements.taskDueDateInput) elements.taskDueDateInput.value = task.dueDate ? task.dueDate.slice(0, 10) : ''; // YYYY-MM-DD
+    const recurrence = normalizeTaskRecurrence(task);
+    if (elements.taskRecurrenceTypeInput) elements.taskRecurrenceTypeInput.value = recurrence.recurrenceType;
+    if (elements.taskRecurrenceIntervalInput) elements.taskRecurrenceIntervalInput.value = recurrence.recurrenceInterval;
+    if (elements.taskRecurrenceEndInput) elements.taskRecurrenceEndInput.value = recurrence.recurrenceEnd ? recurrence.recurrenceEnd.slice(0, 10) : '';
     // Populate tag chips
     if(task.tags && task.tags.length > 0) {
       task.tags.forEach(tag => addTagChip(tag));
@@ -679,7 +739,11 @@ function openModal(task = null) {
     if (elements.taskUrlInput) elements.taskUrlInput.value = '';
     if(elements.taskPriorityInput) elements.taskPriorityInput.value = 'medium';
     if(elements.taskDueDateInput) elements.taskDueDateInput.value = '';
+    if (elements.taskRecurrenceTypeInput) elements.taskRecurrenceTypeInput.value = 'none';
+    if (elements.taskRecurrenceIntervalInput) elements.taskRecurrenceIntervalInput.value = '1';
+    if (elements.taskRecurrenceEndInput) elements.taskRecurrenceEndInput.value = '';
   }
+  syncRecurrenceFieldState();
   elements.taskDescInput.focus();
 }
 
@@ -694,6 +758,14 @@ function handleTaskSubmit(e) {
   const url = elements.taskUrlInput ? elements.taskUrlInput.value.trim() : '';
   const priority = elements.taskPriorityInput ? elements.taskPriorityInput.value : 'medium';
   const dueDate = elements.taskDueDateInput ? elements.taskDueDateInput.value : null;
+  const recurrenceType = elements.taskRecurrenceTypeInput ? elements.taskRecurrenceTypeInput.value : 'none';
+  const recurrenceIntervalValue = elements.taskRecurrenceIntervalInput ? Number.parseInt(elements.taskRecurrenceIntervalInput.value, 10) : 1;
+  const recurrenceEnd = elements.taskRecurrenceEndInput ? (elements.taskRecurrenceEndInput.value || null) : null;
+  const recurrence = normalizeTaskRecurrence({
+    recurrenceType,
+    recurrenceInterval: recurrenceIntervalValue,
+    recurrenceEnd
+  });
   const tags = getTagsFromChips();
 
   if (!content) return;
@@ -706,11 +778,12 @@ function handleTaskSubmit(e) {
         task.priority = priority;
         task.dueDate = dueDate;
         task.tags = tags;
+        task.recurrenceType = recurrence.recurrenceType;
+        task.recurrenceInterval = recurrence.recurrenceInterval;
+        task.recurrenceEnd = recurrence.recurrenceEnd;
     }
   } else {
-    // Need generateId from state... or import it.
-    // Let's create a temp ID here or ensure generateId is imported
-    const newId = Date.now().toString(36) + Math.random().toString(36).substr(2);
+    const newId = generateId();
     state.tasks.push({
       id: newId,
       content,
@@ -720,6 +793,9 @@ function handleTaskSubmit(e) {
       priority,
       dueDate,
       tags,
+      recurrenceType: recurrence.recurrenceType,
+      recurrenceInterval: recurrence.recurrenceInterval,
+      recurrenceEnd: recurrence.recurrenceEnd,
       totalTime: 0,
       isTracking: false,
       lastStartTime: null,
