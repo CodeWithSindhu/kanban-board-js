@@ -926,8 +926,10 @@ function closeTimeLogsModal() {
     state.viewedTaskId = null;
     elements.timeLogsModal.classList.remove('active');
 }
+
 function renderTimeLogs(task) {
     elements.timeLogsList.innerHTML = '';
+    elements.timeLogsList.style.display = 'none';
     if (elements.memoHistoryList) elements.memoHistoryList.innerHTML = '';
 
     // Calculate Total Time (including current session)
@@ -943,46 +945,15 @@ function renderTimeLogs(task) {
        </div>
     `;
 
-    if (!task.timeLogs || task.timeLogs.length === 0) {
-        elements.timeLogsList.innerHTML = '<p>No logs</p>';
-    } else {
-      [...task.timeLogs].reverse().forEach(log => {
-          const start = new Date(log.start).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
-          const end = log.end ? new Date(log.end).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : 'Running...';
-          const duration = log.end ? formatTime(log.end - log.start) : '---';
-
-          const div = document.createElement('div');
-          div.className = 'log-entry';
-          div.innerHTML = `
-            <div class="log-times">
-              <div class="log-row">
-                  <span class="log-label">Start</span>
-                  <span class="log-value">${start}</span>
-              </div>
-              <div class="log-row">
-                  <span class="log-label">End</span>
-                  <span class="log-value">${end}</span>
-              </div>
-            </div>
-            <div class="log-duration-badge">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
-                  <path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/>
-                  <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/>
-              </svg>
-              <span>${duration}</span>
-            </div>
-          `;
-          elements.timeLogsList.appendChild(div);
-      });
-    }
-
     if (!elements.memoHistoryList) return;
 
     const memoSessions = task.memoSessions || [];
     const activeDraft = task.activeMemoSession
       ? [{ ...task.activeMemoSession, duration: task.lastStartTime ? Date.now() - task.lastStartTime : null, endedAt: null, isDraft: true }]
       : [];
-    const allMemoEntries = [...activeDraft, ...memoSessions].reverse();
+    const allMemoEntries = [...activeDraft, ...memoSessions]
+      .filter(session => session.startedAt)
+      .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
 
     if (allMemoEntries.length === 0) {
       elements.memoHistoryList.innerHTML = '<p>No memo sessions yet</p>';
@@ -994,16 +965,19 @@ function renderTimeLogs(task) {
       entry.className = `memo-history-entry ${session.isDraft ? 'is-draft' : ''}`;
 
       const startedAt = session.startedAt ? new Date(session.startedAt) : null;
-      const periodLabel = startedAt && !Number.isNaN(startedAt.getTime())
+      const endedAt = session.endedAt ? new Date(session.endedAt) : null;
+      const startLabel = startedAt && !Number.isNaN(startedAt.getTime())
         ? startedAt.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
-        : 'Unknown time';
-      const durationLabel = Number.isFinite(session.duration) ? formatTime(session.duration) : 'Running...';
+        : 'Unknown start';
+      const endLabel = endedAt && !Number.isNaN(endedAt.getTime())
+        ? endedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+        : 'Running';
       const noteText = (session.note || '').trim() || 'No summary added.';
 
       entry.innerHTML = `
         <div class="memo-history-meta">
-          <span class="memo-history-time">${periodLabel}</span>
-          <span class="memo-history-duration">${durationLabel}</span>
+          <span class="memo-history-time">${startLabel}</span>
+          <span class="memo-history-range">→ ${endLabel}</span>
         </div>
         <p class="memo-history-note">${escapeHtml(noteText)}</p>
       `;
