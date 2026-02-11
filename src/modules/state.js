@@ -24,6 +24,23 @@ export const state = {
 
 export const RECURRENCE_TYPES = ['none', 'daily', 'weekly', 'monthly'];
 
+export function normalizeTaskSubtasks(subtasks) {
+  if (!Array.isArray(subtasks)) return [];
+
+  return subtasks
+    .map(subtask => {
+      const text = typeof subtask?.text === 'string' ? subtask.text.trim() : '';
+      if (!text) return null;
+
+      return {
+        id: subtask.id || generateId(),
+        text,
+        done: Boolean(subtask.done)
+      };
+    })
+    .filter(Boolean);
+}
+
 export function normalizeTaskRecurrence(task) {
   const recurrenceType = RECURRENCE_TYPES.includes(task.recurrenceType) ? task.recurrenceType : 'none';
   const parsedInterval = Number.parseInt(task.recurrenceInterval, 10);
@@ -74,7 +91,12 @@ export function createNextRecurringTask(task) {
     lastStartTime: null,
     timeLogs: [],
     memoSessions: [],
-    activeMemoSession: null
+    activeMemoSession: null,
+    subtasks: normalizeTaskSubtasks(task.subtasks).map(subtask => ({
+      id: generateId(),
+      text: subtask.text,
+      done: false
+    }))
   };
 }
 
