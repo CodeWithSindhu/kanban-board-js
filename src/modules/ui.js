@@ -927,44 +927,6 @@ function closeTimeLogsModal() {
     elements.timeLogsModal.classList.remove('active');
 }
 
-function getDayGroupLabel(dateValue) {
-  const dayDate = new Date(dateValue);
-  dayDate.setHours(0, 0, 0, 0);
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const yesterday = new Date(today);
-  yesterday.setDate(today.getDate() - 1);
-
-  if (dayDate.getTime() === today.getTime()) return 'Today';
-  if (dayDate.getTime() === yesterday.getTime()) return 'Yesterday';
-
-  return dayDate.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
-}
-
-function getSessionEntriesForLogs(task) {
-  const logs = task.timeLogs || [];
-  const memoSessions = task.memoSessions || [];
-  const memoQueue = [...memoSessions].reverse();
-
-  return [...logs].reverse().map(log => {
-    const memoMatch = log.end ? memoQueue.shift() : task.activeMemoSession || null;
-    return {
-      ...log,
-      note: memoMatch?.note || '',
-      isRunning: !log.end
-    };
-  });
-}
-
-function createTimeLogsEmptyState(variant, message) {
-  const empty = document.createElement('div');
-  empty.className = `time-logs-empty time-logs-empty--${variant}`;
-  empty.innerHTML = `<p>${message}</p>`;
-  return empty;
-}
-
 function renderTimeLogs(task) {
     elements.timeLogsList.innerHTML = '';
     elements.timeLogsList.style.display = 'none';
