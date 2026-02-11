@@ -1,5 +1,5 @@
 // Drag & Drop Module
-import { state } from './state.js';
+import { state, createNextRecurringTask } from './state.js';
 import { saveData } from './storage.js';
 import { addToHistory } from './history.js';
 import { toggleTimer } from './timer.js';
@@ -76,6 +76,14 @@ function handleDrop(e, column) {
        window.confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
     }
 
+    if (status === 'done') {
+      const nextTask = createNextRecurringTask(task);
+      if (nextTask) {
+        state.tasks.push(nextTask);
+        addToHistory('created', `Created recurring task "${nextTask.content}" for ${nextTask.dueDate || 'next cycle'}`);
+      }
+    }
+
     addToHistory('moved', `Moved "${task.content}" from ${oldStatus} to ${status}`, {
       from: oldStatus, to: status, task: task.content
     });
@@ -97,6 +105,8 @@ function getStatusCount(status) {
 function updateTaskOrder() {
   // Re-read the DOM to find the new order of IDs
   const newOrder = [];
+  const seenIds = new Set();
+
   document.querySelectorAll('.column').forEach(col => {
     const status = col.dataset.status;
     const cards = col.querySelectorAll('.task-card');
@@ -106,14 +116,19 @@ function updateTaskOrder() {
        const task = state.tasks.find(t => t.id === id);
        if (task) {
          task.status = status; // Ensure status reflects column
+         seenIds.add(id);
          newOrder.push(task);
        }
     });
   });
-  
-  // Replace state.tasks with reordered list (preserving any missing tasks safely?)
-  // Better: We just used the DOM to rebuild the array.
-  // Assuming all tasks are on board.
+
+  // Keep newly-created tasks that are not yet represented in the current DOM pass.
+  state.tasks.forEach(task => {
+    if (!seenIds.has(task.id)) {
+      newOrder.push(task);
+    }
+  });
+
   state.tasks = newOrder;
 }
 

@@ -178,6 +178,28 @@
             </div>
           </div>
 
+          <section class="recurrence-settings" aria-label="Recurrence settings">
+            <div class="form-group">
+              <label for="task-recurrence-type">Repeat</label>
+              <select id="task-recurrence-type">
+                <option value="none" selected>Does not repeat</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </div>
+            <div class="form-row recurrence-settings-row">
+              <div class="form-group">
+                <label for="task-recurrence-interval">Interval</label>
+                <input type="number" id="task-recurrence-interval" min="1" step="1" value="1" />
+              </div>
+              <div class="form-group">
+                <label for="task-recurrence-end">Repeat Until</label>
+                <input type="date" id="task-recurrence-end" />
+              </div>
+            </div>
+          </section>
+
           <div class="form-group">
              <label for="task-tags-input">Tags</label>
              <div class="tags-input-container" id="task-tags">

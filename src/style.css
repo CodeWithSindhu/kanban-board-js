@@ -65,7 +65,24 @@ input:focus, select:focus, textarea:focus {
 .badge-high { background: rgba(239, 68, 68, 0.12); color: #e6a2a2; }
 .badge-date { background: rgba(107, 114, 128, 0.12); color: #b7bec7; text-transform: none; }
 .badge-tag { background: rgba(139, 92, 246, 0.12); color: #b8a8df; text-transform: lowercase; }
+.badge-recurrence { background: rgba(34, 197, 94, 0.14); color: #9de2b4; text-transform: none; }
 .task-metadata-bar { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+
+.recurrence-settings {
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: var(--space-3);
+  margin-bottom: 1rem;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.recurrence-settings-row {
+  margin-top: var(--space-2);
+}
+
+.recurrence-settings.is-disabled .recurrence-settings-row {
+  opacity: 0.55;
+}
 
 /* Tags Chip Input */
 .tags-input-container {
