@@ -928,29 +928,38 @@ function closeTimeLogsModal() {
 }
 
 function renderTimeLogs(task) {
+    // Legacy time log card list is intentionally disabled.
     elements.timeLogsList.innerHTML = '';
     elements.timeLogsList.style.display = 'none';
-    if (elements.memoHistoryList) elements.memoHistoryList.innerHTML = '';
 
-    // Calculate Total Time (including current session)
-    let currentTotal = task.totalTime || 0;
-    if (task.isTracking && task.lastStartTime) {
-        currentTotal += (Date.now() - task.lastStartTime);
+    if (elements.memoHistoryList) {
+      elements.memoHistoryList.innerHTML = '';
     }
 
-    // Update Header
+    // Calculate total time including active running session.
+    let currentTotal = task.totalTime || 0;
+    if (task.isTracking && task.lastStartTime) {
+      currentTotal += (Date.now() - task.lastStartTime);
+    }
+
     elements.totalDurationContainer.innerHTML = `
-       <div class="simple-total-header">
-          Total Duration <span class="simple-time">${formatTime(currentTotal)}</span>
-       </div>
+      <div class="simple-total-header">
+        Total Duration <span class="simple-time">${formatTime(currentTotal)}</span>
+      </div>
     `;
 
     if (!elements.memoHistoryList) return;
 
     const memoSessions = task.memoSessions || [];
     const activeDraft = task.activeMemoSession
-      ? [{ ...task.activeMemoSession, duration: task.lastStartTime ? Date.now() - task.lastStartTime : null, endedAt: null, isDraft: true }]
+      ? [{
+          ...task.activeMemoSession,
+          duration: task.lastStartTime ? Date.now() - task.lastStartTime : null,
+          endedAt: null,
+          isDraft: true
+        }]
       : [];
+
     const allMemoEntries = [...activeDraft, ...memoSessions]
       .filter(session => session.startedAt)
       .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
@@ -964,14 +973,16 @@ function renderTimeLogs(task) {
       const entry = document.createElement('div');
       entry.className = `memo-history-entry ${session.isDraft ? 'is-draft' : ''}`;
 
-      const startedAt = session.startedAt ? new Date(session.startedAt) : null;
+      const startedAt = new Date(session.startedAt);
       const endedAt = session.endedAt ? new Date(session.endedAt) : null;
-      const startLabel = startedAt && !Number.isNaN(startedAt.getTime())
-        ? startedAt.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
-        : 'Unknown start';
+
+      const startLabel = Number.isNaN(startedAt.getTime())
+        ? 'Unknown start'
+        : startedAt.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
       const endLabel = endedAt && !Number.isNaN(endedAt.getTime())
         ? endedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
         : 'Running';
+
       const noteText = (session.note || '').trim() || 'No summary added.';
 
       entry.innerHTML = `
