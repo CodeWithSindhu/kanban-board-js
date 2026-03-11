@@ -895,6 +895,7 @@ function handleGlobalClick(e) {
 
 function openModal(task = null) {
   elements.modal.classList.add('active');
+  document.body.classList.add('modal-open');
   // Clear existing tag chips
   clearTagChips();
   
@@ -928,11 +929,14 @@ function openModal(task = null) {
     renderModalSubtasks([]);
   }
   syncRecurrenceFieldState();
+  const formBody = elements.taskForm?.querySelector('.task-form-body');
+  if (formBody) formBody.scrollTop = 0;
   elements.taskDescInput.focus();
 }
 
 function closeModal() {
   elements.modal.classList.remove('active');
+  document.body.classList.remove('modal-open');
 }
 
 function handleTaskSubmit(e) {

@@ -37,6 +37,10 @@ body {
   min-height: 100vh;
 }
 
+body.modal-open {
+  overflow: hidden;
+}
+
 /* Header Actions Overflow Fix */
 .header-actions {
   display: flex;
@@ -444,7 +448,7 @@ main {
 .task-primary-row {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: var(--space-2);
 }
 
@@ -735,6 +739,9 @@ main {
   align-items: center;
   opacity: 0;
   transition: opacity 0.3s;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1.25rem;
 }
 
 .modal.active {
@@ -773,6 +780,28 @@ main {
 }
 
 .modal-header h2 {
+  margin-bottom: 0;
+}
+
+
+.task-modal-content {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 2.5rem);
+  margin: auto;
+}
+
+.task-modal-header {
+  position: sticky;
+  top: 0;
+  background: linear-gradient(180deg, #161b22 0%, rgba(22, 27, 34, 0.97) 100%);
+  z-index: 2;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(240, 246, 252, 0.08);
+  margin-bottom: 1rem;
+}
+
+.task-modal-header h2 {
   margin-bottom: 0;
 }
 
@@ -827,6 +856,68 @@ main {
   padding-top: 1rem;
   border-top: 1px solid var(--glass-border);
   margin-top: 1rem;
+}
+
+#task-modal .modal-actions {
+  flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
+  padding-bottom: 0.25rem;
+  background: linear-gradient(0deg, #161b22 58%, rgba(22, 27, 34, 0.88) 100%);
+}
+
+#task-form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+.task-form-body {
+  overflow-y: auto;
+  padding-right: 0.35rem;
+  margin-right: -0.35rem;
+  min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(139, 148, 158, 0.7) rgba(13, 17, 23, 0.35);
+}
+
+.task-form-body::-webkit-scrollbar {
+  width: 9px;
+}
+
+.task-form-body::-webkit-scrollbar-track {
+  background: rgba(13, 17, 23, 0.35);
+  border-radius: 8px;
+}
+
+.task-form-body::-webkit-scrollbar-thumb {
+  background: rgba(139, 148, 158, 0.65);
+  border-radius: 8px;
+}
+
+@media (max-width: 640px) {
+  .modal {
+    padding: 0.75rem;
+  }
+
+  .modal-content {
+    width: 100%;
+    padding: 1.2rem;
+  }
+
+  .task-modal-content {
+    max-height: calc(100vh - 1.5rem);
+  }
+
+  .task-modal-header {
+    padding-bottom: 0.6rem;
+  }
+
+  .form-row {
+    flex-direction: column;
+    gap: 0;
+  }
 }
 
 .modal-actions button {
@@ -1176,7 +1267,7 @@ main {
   border-bottom: none;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
 }
 
 .history-item::before {
